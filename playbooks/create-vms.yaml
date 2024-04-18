@@ -1,0 +1,48 @@
+---
+- name: Create VMs for ABI deployment
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+  - firstMACParts: "{{ machineNetwork.firstMAC.split(':') }}"
+  - lastOctetMAC: "{{ firstMACParts[-1]|int }}"
+  - state: poweredon
+    
+  tasks:
+  - name: Create and start virtual machines
+    vmware_guest:
+      hostname: "{{ vcenter.hostname }}"
+      username: "{{ vcenter.username }}"
+      password: "{{ vcenter.password }}"
+      datacenter: "{{ vcenter.datacenter }}"
+      validate_certs: no
+      folder: "/{{ vcenter.datacenter }}/vm/"
+      guest_id: "rhel9_64Guest"
+      name: "node{{ '%02d'|format(loop) }}.{{ name }}.{{ baseDomain }}"
+      state: "{{ state }}"
+      disk:
+      - size_gb: "{{ vmData.disk[0] }}"
+        type: thin
+        datastore: "{{ vmData.datastore }}"
+      - size_gb: "{{ vmData.disk[1] }}"
+        type: thin
+        datastore: "{{ vmData.datastore }}"
+      hardware:
+        memory_mb: "{{ vmData.memory }}"
+        num_cpus: "{{ vmData.cpu }}"
+        scsi: paravirtual
+      networks:
+      - name: "{{ vmData.network }}"
+        mac: "{{ firstMACParts[:-1]|join(':') ~ ':' ~ '%02x'|format(lastOctetMAC|int + loop)|string }}"
+        device_type: vmxnet3
+      cdrom:
+      - controller_number: 0
+        unit_number: 0
+        state: present
+        type: iso
+        iso_path: "[{{ vmData.datastore }}] iso/{{ name }}-agent.x86_64.iso"
+    loop: "{{ range(controlPlaneReplicas|int + computeReplicas|int ) }}"
+    vars:
+      vmData: "{% if loop < controlPlaneReplicas %}{{ vms.controlPlaneData }}{% else %}{{ vms.computeData }}{% endif %}"
+    loop_control:
+      loop_var: loop

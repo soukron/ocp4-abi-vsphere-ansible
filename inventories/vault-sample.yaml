@@ -1,0 +1,7 @@
+---
+vcenter:
+  hostname: ''
+  username: ''
+  password: ''
+  datacenter: ''
+pullSecret: ''

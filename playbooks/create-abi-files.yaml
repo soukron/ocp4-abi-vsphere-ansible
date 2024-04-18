@@ -1,0 +1,21 @@
+---
+- name: Create required files for ABI deployment
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+  - name: Create destination directory
+    ansible.builtin.file:
+      path: "../clusters/{{ name }}"
+      state: directory
+
+  - name: Remove any file in the destination directory
+    ansible.builtin.shell: "rm -vfr ../clusters/{{ name }}/*"
+
+  - name: Generate ABI input files
+    ansible.builtin.template:
+      src: "../templates/{{ item }}.j2"
+      dest: "../clusters/{{ name }}/{{ item }}"
+    with_items:
+    - install-config.yaml
+    - agent-config.yaml

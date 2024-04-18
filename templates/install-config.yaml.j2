@@ -1,0 +1,39 @@
+---
+apiVersion: v1
+metadata:
+  name: {{ name }}
+baseDomain: {{ baseDomain }}
+compute:
+- architecture: amd64
+  hyperthreading: Enabled
+  name: worker
+  platform: {}
+  replicas: {{ computeReplicas }}
+controlPlane:
+  architecture: amd64
+  hyperthreading: Enabled
+  name: master
+  platform: {}
+  replicas: {{ controlPlaneReplicas }}
+networking:
+  clusterNetwork:
+  - cidr: 10.128.0.0/14
+    hostPrefix: 23
+  machineNetwork:
+  - cidr: {{ machineNetwork.cidr }}
+  networkType: {{ networkType }}
+  serviceNetwork:
+  - 172.30.0.0/16
+platform:
+{% if controlPlaneReplicas > 1 %}
+  baremetal:
+    ingressVIPs:
+    - {{ ingressVIP }}
+    apiVIPs:
+    - {{ apiVIP }}
+{% else %}
+  none: {}
+{% endif %}
+pullSecret: '{{ pullSecret }}'
+sshKey: |
+  {{ sshKey }}

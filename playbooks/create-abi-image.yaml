@@ -1,0 +1,32 @@
+---
+- name: Create ISO image for ABI deployment
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+  - name: Run openshift-install to generate the ISO file
+    ansible.builtin.shell: "openshift-install --dir ../clusters/{{ name }} agent create image"
+
+  - name: Delete previous ISO image to datastore
+    community.vmware.vsphere_file:
+      hostname: '{{ vcenter.hostname }}'
+      username: '{{ vcenter.username }}'
+      password: '{{ vcenter.password }}'
+      validate_certs: no
+      datacenter: "{{ vcenter.datacenter }}"
+      datastore: "{{ item }}"
+      path: "iso/{{ name }}-agent.x86_64.iso"
+      state: absent
+    with_items: "{{ vms | dict2items | selectattr('value.datastore', 'defined') | map(attribute='value.datastore') | list | unique }}"
+
+  - name: Upload ISO image to datastore
+    community.vmware.vsphere_copy:
+      hostname: '{{ vcenter.hostname }}'
+      username: '{{ vcenter.username }}'
+      password: '{{ vcenter.password }}'
+      validate_certs: no
+      src: "../clusters/{{ name }}/agent.x86_64.iso"
+      datacenter: "{{ vcenter.datacenter }}"
+      datastore: "{{ item }}"
+      path: "iso/{{ name }}-agent.x86_64.iso"
+    with_items: "{{ vms | dict2items | selectattr('value.datastore', 'defined') | map(attribute='value.datastore') | list | unique }}"

@@ -1,0 +1,11 @@
+---
+- name: Monitor installation process
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+  - name: Waiting for bootstrap to complete
+    ansible.builtin.shell: "openshift-install --dir ../clusters/{{ name }} agent wait-for bootstrap-complete"
+
+  - name: Waiting for installation to complete
+    ansible.builtin.shell: "openshift-install --dir ../clusters/{{ name }} agent wait-for install-complete"

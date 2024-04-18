@@ -1,0 +1,48 @@
+{% set first_ip_parts = machineNetwork.firstIP.split('.') %}
+{% set base_ip = first_ip_parts[:-1]|join('.') %}
+{% set last_octet = first_ip_parts[-1]|int %}
+{% set first_mac_parts = machineNetwork.firstMAC.split(':') %}
+{% set last_octet_mac = first_mac_parts[-1]|int %}
+---
+apiVersion: v1alpha1
+kind: AgentConfig
+metadata:
+  name: {{ name }}
+rendezvousIP: {{ machineNetwork.rendezvousIP }}
+hosts:
+{% for i in range(controlPlaneReplicas|int + computeReplicas|int) %}
+{% set current_ip = base_ip ~ '.' ~ (last_octet + i)|string %}
+{% set current_mac = first_mac_parts[:-1]|join(':') ~ ':' ~ '%02x'|format(last_octet_mac + i) %}
+- hostname: node{{ '%02d'|format(i) }}.{{ name }}.{{ baseDomain }}
+{% if i < controlPlaneReplicas %}
+  role: master
+{% else %}
+  role: worker
+{% endif %}
+  interfaces:
+  - name: ens192
+    macAddress: {{ current_mac }}
+  rootDeviceHints:
+    deviceName: /dev/sda
+  networkConfig:
+    interfaces:
+    - name: ens192
+      type: ethernet
+      state: up
+      mac-address: {{ current_mac }}
+      ipv4:
+        enabled: true
+        address:
+        - ip: {{ current_ip }}
+          prefix-length: {{ machineNetwork.cidr.split('/')[1] }}
+        dhcp: false
+    dns-resolver:
+      config:
+        server:
+        - 10.0.0.1
+    routes:
+      config:
+      - destination: 0.0.0.0/0
+        next-hop-address: {{ machineNetwork.gateway }}
+        next-hop-interface: ens192
+{% endfor %}
