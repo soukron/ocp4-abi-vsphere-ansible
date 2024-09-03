@@ -41,6 +41,9 @@
         state: present
         type: iso
         iso_path: "[{{ vmData.datastore }}] iso/{{ name }}-agent.x86_64.iso"
+      advanced_settings:
+      - key: disk.EnableUUID
+        value: TRUE
     loop: "{{ range(controlPlaneReplicas|int + computeReplicas|int ) }}"
     vars:
       vmData: "{% if loop < controlPlaneReplicas %}{{ vms.controlPlaneData }}{% else %}{{ vms.computeData }}{% endif %}"

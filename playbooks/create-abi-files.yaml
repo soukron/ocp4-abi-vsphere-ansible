@@ -4,13 +4,13 @@
   gather_facts: false
 
   tasks:
+  - name: Remove destination directory (if any)
+    ansible.builtin.shell: "rm -vfr ../clusters/{{ name }}"
+
   - name: Create destination directory
     ansible.builtin.file:
       path: "../clusters/{{ name }}"
       state: directory
-
-  - name: Remove any file in the destination directory
-    ansible.builtin.shell: "rm -vfr ../clusters/{{ name }}/*"
 
   - name: Generate ABI input files
     ansible.builtin.template:
