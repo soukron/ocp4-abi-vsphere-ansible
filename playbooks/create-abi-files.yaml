@@ -4,18 +4,29 @@
   gather_facts: false
 
   tasks:
+  - name: Store clusterDir in a fact
+    ansible.builtin.set_fact: clusterDir="{{ clusterBaseDir|default('../clusters') }}/{{ name }}.{{ baseDomain }}"
+
   - name: Remove destination directory (if any)
-    ansible.builtin.shell: "rm -vfr ../clusters/{{ name }}"
+    ansible.builtin.shell: "rm -vfr {{ clusterDir }}"
 
   - name: Create destination directory
     ansible.builtin.file:
-      path: "../clusters/{{ name }}"
+      path: "{{ clusterDir }}"
       state: directory
 
   - name: Generate ABI input files
     ansible.builtin.template:
       src: "../templates/{{ item }}.j2"
-      dest: "../clusters/{{ name }}/{{ item }}"
+      dest: "{{ clusterDir }}/{{ item }}"
+    with_items:
+    - install-config.yaml
+    - agent-config.yaml
+
+  - name: Generate ABI input files (backups)
+    ansible.builtin.template:
+      src: "../templates/{{ item }}.j2"
+      dest: "{{ clusterDir }}/{{ item }}.orig"
     with_items:
     - install-config.yaml
     - agent-config.yaml

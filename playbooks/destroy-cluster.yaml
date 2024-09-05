@@ -4,6 +4,9 @@
   gather_facts: false
 
   tasks:
+  - name: Store clusterDir in a fact
+    ansible.builtin.set_fact: clusterDir="{{ clusterBaseDir|default('../clusters') }}/{{ name }}.{{ baseDomain }}"
+
   - name: Power off virtual machines
     vmware_guest:
       hostname: "{{ vcenter.hostname }}"
@@ -44,3 +47,7 @@
       path: "iso/{{ name }}-agent.x86_64.iso"
       state: absent
     with_items: "{{ vms | dict2items | selectattr('value.datastore', 'defined') | map(attribute='value.datastore') | list | unique }}"
+
+  - name: Remove cluster directory
+    ansible.builtin.shell: "rm -vfr {{ clusterDir }}"
+
