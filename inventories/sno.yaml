@@ -1,5 +1,9 @@
 all:
   vars:
+    # optionally set a different clusterBaseDir for clusters
+    # defaults to "clusters/" in the repository directory
+    clusterBaseDir: ~/.local/ocp4/clusters
+
     name: sno
     baseDomain: gmbros.local
 
@@ -18,8 +22,7 @@ all:
     apiVIP: 10.0.0.209
 
     pullSecret: fromVault
-    sshKey: |
-      ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCxRsq/E4cnWht8Wi0Ua8XpS0dvkJdWJVgASX359JIhpHN6PZ45jCKSUhdAgiX4CVeP3GolXTX5FeBw3LXXgav5fKAKzpDr9O/O15YIpb/xFVhEgy1sJuwhx6h0PuoB0EeZGsV75opAL4LN+haAgwaaQD9fW2jISSdTzsVaeGa8bSIMTEowkuWiVQvMPitlt9hPbDnO5MTak8ZCFt9OH6qWwEHO0jcO8+Kupfl29V3s7o0GNICEpdoZ7JRa5Y0fnnHVsirfGklbnA9HZCSMYUt+kbf3K473ssoV2R0x/4/+iW6Qxc09Gwix+DZfoPdbDz4yPTNGJMG2RgMG4aTT+J/dmY6qY71QrAw6/jaflQP4+DTyc4MgB0d3sRRKMncHPSnLjWwDQoyiu2DwNq4hpQmg3qb9UnNzEaiZnPZfMQqlA56E0l92nygc+zQS0I0LD3ENQK2HS9V5HwGtCCDVx8PObV5RjmCQm93inetDERcPWHwGTD9fJF8HbOppy1YQQ6U= admin@localhost.localdomain
+    sshKey: fromVault
 
     vcenter:
       hostname: fromVault
@@ -33,7 +36,6 @@ all:
         memory: 16384
         disk:
         - 100
-        - 50
         network: Routed Network
         datastore: esx1-datastore
       computeData: []

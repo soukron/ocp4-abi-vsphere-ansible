@@ -10,7 +10,7 @@
     
   tasks:
   - name: Create and start virtual machines
-    vmware_guest:
+    community.vmware.vmware_guest:
       hostname: "{{ vcenter.hostname }}"
       username: "{{ vcenter.username }}"
       password: "{{ vcenter.password }}"
@@ -24,9 +24,6 @@
       - size_gb: "{{ vmData.disk[0] }}"
         type: thin
         datastore: "{{ vmData.datastore }}"
-      #- size_gb: "{{ vmData.disk[1] }}"
-      #  type: thin
-      #  datastore: "{{ vmData.datastore }}"
       hardware:
         memory_mb: "{{ vmData.memory }}"
         num_cpus: "{{ vmData.cpu }}"

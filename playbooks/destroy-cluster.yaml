@@ -8,7 +8,7 @@
     ansible.builtin.set_fact: clusterDir="{{ clusterBaseDir|default('../clusters') }}/{{ name }}.{{ baseDomain }}"
 
   - name: Power off virtual machines
-    vmware_guest:
+    community.vmware.vmware_guest:
       hostname: "{{ vcenter.hostname }}"
       username: "{{ vcenter.username }}"
       password: "{{ vcenter.password }}"
@@ -22,7 +22,7 @@
     ignore_errors: true
 
   - name: Remove virtual machine from disk and inventory 
-    vmware_guest:
+    community.vmware.vmware_guest:
       hostname: "{{ vcenter.hostname }}"
       username: "{{ vcenter.username }}"
       password: "{{ vcenter.password }}"

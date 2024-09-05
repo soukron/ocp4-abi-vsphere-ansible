@@ -1,7 +1,9 @@
 ---
 vcenter:
-  hostname: ''
-  username: ''
-  password: ''
-  datacenter: ''
-pullSecret: ''
+  hostname: 'vcenter.example.local'
+  username: 'user'
+  password: 'password'
+  datacenter: 'datacenter'
+pullSecret: '{"auths":{...}}'
+sshKey: |
+ ssh-rsa AAAAB3...YQQ6U= user@host.example.local
