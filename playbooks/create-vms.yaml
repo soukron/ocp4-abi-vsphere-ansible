@@ -2,47 +2,88 @@
 - name: Create VMs for ABI deployment
   hosts: localhost
   gather_facts: false
-
   vars:
-  - firstMACParts: "{{ machineNetwork.firstMAC.split(':') }}"
-  - lastOctetMAC: "{{ firstMACParts[-1]|int }}"
-  - state: poweredon
-    
+    state: poweredon
+    firstMACParts: "{{ machineNetwork.firstMAC.split(':') }}"
+    lastOctetMAC: "{{ firstMACParts[-1] | int }}"
+    mac_counter: "{{ lastOctetMAC }}"
+
   tasks:
-  - name: Create and start virtual machines
-    community.vmware.vmware_guest:
-      hostname: "{{ vcenter.hostname }}"
-      username: "{{ vcenter.username }}"
-      password: "{{ vcenter.password }}"
-      datacenter: "{{ vcenter.datacenter }}"
-      validate_certs: no
-      folder: "/{{ vcenter.datacenter }}/vm/"
-      guest_id: "rhel9_64Guest"
-      name: "node{{ '%02d'|format(loop) }}.{{ name }}.{{ baseDomain }}"
-      state: "{{ state }}"
-      disk:
-      - size_gb: "{{ vmData.disk[0] }}"
-        type: thin
-        datastore: "{{ vmData.datastore }}"
-      hardware:
-        memory_mb: "{{ vmData.memory }}"
-        num_cpus: "{{ vmData.cpu }}"
-        scsi: paravirtual
-      networks:
-      - name: "{{ vmData.network }}"
-        mac: "{{ firstMACParts[:-1]|join(':') ~ ':' ~ '%02x'|format(lastOctetMAC|int + loop)|string }}"
-        device_type: vmxnet3
-      cdrom:
-      - controller_number: 0
-        unit_number: 0
-        state: present
-        type: iso
-        iso_path: "[{{ vmData.datastore }}] iso/{{ name }}-agent.x86_64.iso"
-      advanced_settings:
-      - key: disk.EnableUUID
-        value: TRUE
-    loop: "{{ range(controlPlaneReplicas|int + computeReplicas|int ) }}"
-    vars:
-      vmData: "{% if loop < controlPlaneReplicas %}{{ vms.controlPlaneData }}{% else %}{{ vms.computeData }}{% endif %}"
-    loop_control:
-      loop_var: loop
+    - name: Generate MAC addresses
+      set_fact:
+        generated_macs: "{{ generated_macs | default([]) + [next_mac] }}"
+        mac_counter: "{{ mac_counter | int + 1 }}"
+      vars:
+        next_mac: >-
+          {{ (firstMACParts[:-1] + [('%02x' | format(mac_counter | int))]) | join(':') }}
+      loop: "{{ range(
+        (controlPlaneReplicas | int * vms.controlPlaneData.interfaces | length) +
+        (computeReplicas | int * vms.computeData.interfaces | length)
+      ) }}"
+
+    - name: Generate network and disk configurations for all nodes
+      set_fact:
+        all_node_networks: "{{ all_node_networks | default([]) + [node_networks] }}"
+        all_node_disks: "{{ all_node_disks | default([]) + [node_disks] }}"
+      vars:
+        vmData: "{{ vms.controlPlaneData if vm_index < controlPlaneReplicas | int else vms.computeData }}"
+        node_networks: "{{ node_networks_list | from_json }}"
+        node_networks_list: >-
+          {% set start = vm_index * vmData.interfaces | length %}
+          {% set end = start + vmData.interfaces | length %}
+          [
+          {% for interface in vmData.interfaces %}
+            {% set mac = generated_macs[start + loop.index0] %}
+            {
+              "name": "{{ interface.network }}",
+              "mac": "{{ mac }}",
+              "device_type": "vmxnet3"
+            }{% if not loop.last %},{% endif %}
+          {% endfor %}
+          ]
+        node_disks: "{{ node_disks_list }}"
+        node_disks_list: >-
+          [
+          {% for disk in vmData.disk %}
+            {
+              "size_gb": {{ disk }},
+              "type": "thin",
+              "datastore": "{{ vmData.datastore }}"
+            }{% if not loop.last %},{% endif %}
+          {% endfor %}
+          ]
+      loop: "{{ range(controlPlaneReplicas | int + computeReplicas | int) }}"
+      loop_control:
+        loop_var: vm_index
+
+    - name: Create and start virtual machines
+      community.vmware.vmware_guest:
+        hostname: "{{ vcenter.hostname }}"
+        username: "{{ vcenter.username }}"
+        password: "{{ vcenter.password }}"
+        datacenter: "{{ vcenter.datacenter }}"
+        validate_certs: no
+        folder: "/{{ vcenter.datacenter }}/vm/"
+        guest_id: "rhel9_64Guest"
+        name: "node{{ '%02d' | format(vm_index) }}.{{ name }}.{{ baseDomain }}"
+        state: "{{ state }}"
+        disk: "{{ all_node_disks[vm_index] }}"
+        hardware:
+          memory_mb: "{{ vmData.memory }}"
+          num_cpus: "{{ vmData.cpu }}"
+          scsi: paravirtual
+        networks: "{{ all_node_networks[vm_index] }}"
+        cdrom:
+          - controller_number: 0
+            unit_number: 0
+            state: present
+            type: iso
+            iso_path: "[{{ vmData.datastore }}] iso/{{ name }}-agent.x86_64.iso"
+        advanced_settings:
+          - key: disk.EnableUUID
+            value: TRUE
+      loop: "{{ range(controlPlaneReplicas | int + computeReplicas | int) }}"
+      loop_control:
+        loop_var: vm_index
+      vars:
+        vmData: "{{ vms.controlPlaneData if vm_index < controlPlaneReplicas | int else vms.computeData }}"
