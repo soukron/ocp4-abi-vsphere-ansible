@@ -1,0 +1,53 @@
+---
+- name: Restore last snapshot, power off and power on virtual machines
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+  - name: Store clusterDir in a fact
+    ansible.builtin.set_fact: clusterDir="{{ clusterBaseDir|default('../clusters') }}/{{ name }}.{{ baseDomain }}"
+
+  - name: Restore last snapshot of virtual machines
+    community.vmware.vmware_guest_snapshot:
+      hostname: "{{ vcenter.hostname }}"
+      username: "{{ vcenter.username }}"
+      password: "{{ vcenter.password }}"
+      datacenter: "{{ vcenter.datacenter }}"
+      validate_certs: no
+      name: "node{{ '%02d'|format(loop) }}.{{ name }}.{{ baseDomain }}"
+      folder: "/{{ vcenter.datacenter }}/vm/"
+      state: revert
+      snapshot_name: "{{ snapshot_name | default('snap1') }}"
+    loop: "{{ range(controlPlaneReplicas|int + computeReplicas|int) }}"
+    loop_control:
+      loop_var: loop
+    ignore_errors: true
+
+  - name: Power off virtual machines (forced shutdown)
+    community.vmware.vmware_guest:
+      hostname: "{{ vcenter.hostname }}"
+      username: "{{ vcenter.username }}"
+      password: "{{ vcenter.password }}"
+      datacenter: "{{ vcenter.datacenter }}"
+      validate_certs: no
+      name: "node{{ '%02d'|format(loop) }}.{{ name }}.{{ baseDomain }}"
+      state: poweredoff
+      force: yes  # Apagado forzado
+    loop: "{{ range(controlPlaneReplicas|int + computeReplicas|int) }}"
+    loop_control:
+      loop_var: loop
+    ignore_errors: true
+
+  - name: Power on virtual machines
+    community.vmware.vmware_guest:
+      hostname: "{{ vcenter.hostname }}"
+      username: "{{ vcenter.username }}"
+      password: "{{ vcenter.password }}"
+      datacenter: "{{ vcenter.datacenter }}"
+      validate_certs: no
+      name: "node{{ '%02d'|format(loop) }}.{{ name }}.{{ baseDomain }}"
+      state: poweredon
+    loop: "{{ range(controlPlaneReplicas|int + computeReplicas|int) }}"
+    loop_control:
+      loop_var: loop
+    ignore_errors: true
