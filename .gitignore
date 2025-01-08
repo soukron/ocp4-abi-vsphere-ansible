@@ -1,2 +1,6 @@
 clusters/
-inventories/vault.yaml
+!inventories/ocp4-compact.yaml
+!inventories/ocp4-ha.yaml
+!inventories/sno.yaml
+!inventories/vault-sample.yaml
+inventories/*

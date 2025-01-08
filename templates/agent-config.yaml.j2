@@ -12,30 +12,52 @@ rendezvousIP: {{ machineNetwork.rendezvousIP }}
 hosts:
 {% for i in range(controlPlaneReplicas|int + computeReplicas|int) %}
 {% set current_ip = base_ip ~ '.' ~ (last_octet + i)|string %}
-{% set current_mac = first_mac_parts[:-1]|join(':') ~ ':' ~ '%02x'|format(last_octet_mac + i) %}
+{% set interfaces = control_plane_interfaces if i < controlPlaneReplicas|int else compute_interfaces %}
 - hostname: node{{ '%02d'|format(i) }}.{{ name }}.{{ baseDomain }}
-{% if i < controlPlaneReplicas %}
+{% if i < controlPlaneReplicas|int %}
   role: master
 {% else %}
   role: worker
 {% endif %}
   interfaces:
-  - name: ens192
-    macAddress: {{ current_mac }}
+{% for interface in interfaces %}
+  - name: {{ interface.name }}
+    macAddress: {{ first_mac_parts[:-1]|join(':') ~ ':' ~ '%02x'|format(last_octet_mac + i*interfaces|length + loop.index0) }}
+{% endfor %}
   rootDeviceHints:
     deviceName: /dev/sda
   networkConfig:
     interfaces:
-    - name: ens192
-      type: ethernet
+{% set bond_interfaces = interfaces|selectattr('bond', 'defined')|list %}
+{% if bond_interfaces %}
+    - name: {{ bond_interfaces[0].bond }}
+      type: bond
       state: up
-      mac-address: {{ current_mac }}
+      mac-address: {{ first_mac_parts[:-1]|join(':') ~ ':' ~ '%02x'|format(last_octet_mac + i*interfaces|length) }}
       ipv4:
         enabled: true
         address:
         - ip: {{ current_ip }}
           prefix-length: {{ machineNetwork.cidr.split('/')[1] }}
         dhcp: false
+      link-aggregation:
+        mode: active-backup
+        slaves:
+{% for interface in bond_interfaces %}
+        - {{ interface.name }}
+{% endfor %}
+{% else %}
+    - name: {{ interfaces[0].name }}
+      type: ethernet
+      state: up
+      mac-address: {{ first_mac_parts[:-1]|join(':') ~ ':' ~ '%02x'|format(last_octet_mac + i*interfaces|length) }}
+      ipv4:
+        enabled: true
+        address:
+        - ip: {{ current_ip }}
+          prefix-length: {{ machineNetwork.cidr.split('/')[1] }}
+        dhcp: false
+{% endif %}
     dns-resolver:
       config:
         server:
@@ -44,5 +66,5 @@ hosts:
       config:
       - destination: 0.0.0.0/0
         next-hop-address: {{ machineNetwork.gateway }}
-        next-hop-interface: ens192
+        next-hop-interface: {{ bond_interfaces[0].bond if bond_interfaces else interfaces[0].name }}
 {% endfor %}

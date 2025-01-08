@@ -19,6 +19,9 @@
     ansible.builtin.template:
       src: "../templates/{{ item }}.j2"
       dest: "{{ clusterDir }}/{{ item }}"
+    vars:
+      control_plane_interfaces: "{{ vms.controlPlaneData.interfaces }}"
+      compute_interfaces: "{{ vms.computeData.interfaces }}"
     with_items:
     - install-config.yaml
     - agent-config.yaml
@@ -27,6 +30,9 @@
     ansible.builtin.template:
       src: "../templates/{{ item }}.j2"
       dest: "{{ clusterDir }}/{{ item }}.orig"
+    vars:
+      control_plane_interfaces: "{{ vms.controlPlaneData.interfaces }}"
+      compute_interfaces: "{{ vms.computeData.interfaces }}"
     with_items:
     - install-config.yaml
     - agent-config.yaml

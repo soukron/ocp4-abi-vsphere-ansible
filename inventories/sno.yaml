@@ -36,6 +36,8 @@ all:
         memory: 16384
         disk:
         - 100
-        network: Routed Network
+        interfaces:
+        - name: ens192
+          network: Routed Network
         datastore: esx1-datastore
-      computeData: []
+      computeData: {}
