@@ -39,7 +39,6 @@
       name: "node{{ '%02d'|format(loop) }}.{{ name }}.{{ baseDomain }}"
       folder: "/{{ vcenter.datacenter }}/vm/"
       state: remove_all
-      snapshot_name: "{{ snapshot_name | default('snap1') }}"
     loop: "{{ range(controlPlaneReplicas|int + computeReplicas|int) }}"
     loop_control:
       loop_var: loop
