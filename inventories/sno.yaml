@@ -14,12 +14,12 @@ all:
     machineNetwork:
       cidr: 10.0.0.0/24
       gateway: 10.0.0.1
-      firstIP: 10.0.0.209
-      firstMAC: 00:50:56:88:5e:09
-      rendezvousIP: 10.0.0.209
+      firstIP: 10.0.0.243
+      firstMAC: 00:50:56:88:5e:43
+      rendezvousIP: 10.0.0.243
 
-    ingressVIP: 10.0.0.208
-    apiVIP: 10.0.0.209
+    ingressVIP: 10.0.0.241
+    apiVIP: 10.0.0.242
 
     pullSecret: fromVault
     sshKey: fromVault
