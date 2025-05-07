@@ -20,7 +20,7 @@ networking:
   - cidr: 10.128.0.0/14
     hostPrefix: 23
   machineNetwork:
-  - cidr: {{ machineNetwork.cidr }}
+  - cidr: {{ templateOverrides.machineNetwork.cidr | default(machineNetwork.cidr, true) }}
   networkType: {{ networkType }}
   serviceNetwork:
   - 172.30.0.0/16

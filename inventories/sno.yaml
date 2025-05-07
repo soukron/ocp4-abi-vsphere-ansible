@@ -12,14 +12,14 @@ all:
 
     networkType: OVNKubernetes
     machineNetwork:
-      cidr: 10.0.0.0/24
-      gateway: 10.0.0.1
-      firstIP: 10.0.0.243
-      firstMAC: 00:50:56:88:5e:43
-      rendezvousIP: 10.0.0.243
+      cidr: 10.11.0.0/24
+      gateway: 10.11.0.1
+      nameserver: 10.11.0.1
+      firstIP: 10.11.0.243
+      firstMAC: 00:50:56:0b:00:f3
 
-    ingressVIP: 10.0.0.241
-    apiVIP: 10.0.0.242
+    ingressVIP: 10.11.0.241
+    apiVIP: 10.11.0.242
 
     pullSecret: fromVault
     sshKey: fromVault
@@ -38,6 +38,14 @@ all:
         - 100
         interfaces:
         - name: ens192
-          network: Routed Network
+          network: VM Routed Network
         datastore: esx1-datastore
-      computeData: {}
+      computeData:
+        cpu: 4
+        memory: 8192
+        disk:
+        - 100
+        interfaces:
+        - name: ens192
+          network: VM Routed Network
+        datastore: esx1-datastore

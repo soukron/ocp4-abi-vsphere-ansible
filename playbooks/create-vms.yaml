@@ -27,16 +27,16 @@
         all_node_disks: "{{ all_node_disks | default([]) + [node_disks] }}"
       vars:
         vmData: "{{ vms.controlPlaneData if vm_index < controlPlaneReplicas | int else vms.computeData }}"
-        node_networks: "{{ node_networks_list | from_json }}"
+        hostname: "node{{ '%02d' | format(vm_index) }}.{{ name }}.{{ baseDomain }}"
+        override: "{{ (templateOverrides.vms[hostname] if templateOverrides.vms is defined and templateOverrides.vms[hostname] is defined else {}) }}"
+        start: "{{ vm_index * vmData.interfaces | length }}"
+        node_networks: "{{ node_networks_list }}"
         node_networks_list: >-
-          {% set start = vm_index * vmData.interfaces | length %}
-          {% set end = start + vmData.interfaces | length %}
           [
           {% for interface in vmData.interfaces %}
-            {% set mac = generated_macs[start + loop.index0] %}
             {
-              "name": "{{ interface.network }}",
-              "mac": "{{ mac }}",
+              "name": "{{ override.networks[loop.index0] if override.networks is defined and override.networks[loop.index0] is defined else interface.network }}",
+              "mac": "{{ override.macs[loop.index0] if override.macs is defined and override.macs[loop.index0] is defined else generated_macs[(start | int) + loop.index0] }}",
               "device_type": "vmxnet3"
             }{% if not loop.last %},{% endif %}
           {% endfor %}
