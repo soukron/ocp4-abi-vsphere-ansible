@@ -16,7 +16,7 @@ all:
       gateway: 10.11.0.1
       nameserver: 10.11.0.1
       firstIP: 10.11.0.103
-      firstMAC: 00:50:56:00:00:67
+      firstMAC: 00:50:56:0b:00:67
 
     ingressVIP: 10.11.0.100
     apiVIP: 10.11.0.101
