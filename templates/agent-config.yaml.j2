@@ -1,8 +1,3 @@
-{% set first_ip_parts = machineNetwork.firstIP.split('.') %}
-{% set base_ip = first_ip_parts[:-1]|join('.') %}
-{% set last_octet = first_ip_parts[-1]|int %}
-{% set first_mac_parts = machineNetwork.firstMAC.split(':') %}
-{% set last_octet_mac = first_mac_parts[-1]|int %}
 ---
 apiVersion: v1alpha1
 kind: AgentConfig
@@ -12,60 +7,58 @@ rendezvousIP: {{ machineNetwork.rendezvousIP if machineNetwork.rendezvousIP is d
 hosts:
 {% for i in range(controlPlaneReplicas|int + computeReplicas|int) %}
 {%- set hostname = "node%02d.%s.%s"|format(i, name, baseDomain) %}
-{%- set override = templateOverrides.vms.get(hostname) if templateOverrides.vms is defined else None %}
-{%- set current_ip = override.ip if override and override.ip is defined else base_ip ~ '.' ~ (last_octet + i)|string %}
-{%- set current_prefix = override.prefix if override and override.prefix is defined else machineNetwork.cidr.split('/')[1] %}
-{%- set current_gateway = override.gateway if override and override.gateway is defined else machineNetwork.gateway %}
-{%- set current_nameserver = override.nameserver if override and override.nameserver is defined else machineNetwork.nameserver %}
-{%- set interfaces = control_plane_interfaces if i < controlPlaneReplicas|int else compute_interfaces %}
-  - hostname: {{ hostname }}
-    role: {{ 'master' if i < controlPlaneReplicas|int else 'worker' }}
+{%- set networks = control_plane_networks if i < controlPlaneReplicas|int else compute_networks %}
+{%- set prefix = machineNetwork.cidr.split('/')[1] %}
+{%- set nameserver = machineNetwork.nameserver %}
+{%- set gateway = machineNetwork.gateway %}
+{%- set node_overrides = templateOverrides.vms[hostname] if templateOverrides.vms is defined and hostname in templateOverrides.vms else {} %}
+{%- set interface_overrides = {} %}
+{%- if node_overrides.interfaces is defined %}
+{%-   for override in node_overrides.interfaces %}
+{%-     set _ = interface_overrides.update({override.name: override}) %}
+{%-   endfor %}
+{%- endif %}
+- hostname: {{ hostname }}
+  role: {{ 'master' if i < controlPlaneReplicas|int else 'worker' }}
+  interfaces:
+{% for network in networks %}
+  - name: {{ network.name }}
+    macAddress: {{ node_macs[i|string][network.name].mac }}
+{% endfor %}
+  rootDeviceHints:
+    deviceName: /dev/sda
+  networkConfig:
     interfaces:
-{% for interface in interfaces %}
-      - name: {{ interface.name }}
-        macAddress: {{ override.macs[loop.index0] if override and override.macs is defined else first_mac_parts[:-1]|join(':') ~ ':' ~ '%02x'|format(last_octet_mac + i*interfaces|length + loop.index0) }}
-{% endfor %}
-    rootDeviceHints:
-      deviceName: /dev/sda
-    networkConfig:
-      interfaces:
-{% set bond_interfaces = interfaces|selectattr('bond', 'defined')|list %}
-{% if bond_interfaces %}
-        - name: {{ bond_interfaces[0].bond }}
-          type: bond
-          state: up
-          mac-address: {{ override.macs[0] if override and override.macs is defined else first_mac_parts[:-1]|join(':') ~ ':' ~ '%02x'|format(last_octet_mac + i*interfaces|length) }}
-          ipv4:
-            enabled: true
-            address:
-              - ip: {{ current_ip }}
-                prefix-length: {{ current_prefix }}
-            dhcp: false
-          link-aggregation:
-            mode: active-backup
-            slaves:
-{% for interface in bond_interfaces %}
-            - {{ interface.name }}
-{% endfor %}
-{% else %}
-        - name: {{ interfaces[0].name }}
-          type: ethernet
-          state: up
-          mac-address: {{ override.macs[0] if override and override.macs is defined else first_mac_parts[:-1]|join(':') ~ ':' ~ '%02x'|format(last_octet_mac + i*interfaces|length) }}
-          ipv4:
-            enabled: true
-            address:
-              - ip: {{ current_ip }}
-                prefix-length: {{ current_prefix }}
-            dhcp: false
+{% for network in networks %}
+    - name: {{ network.name }}
+      type: ethernet
+      state: up
+      mac-address: {{ node_macs[i|string][network.name].mac }}
+      ipv4:
+        enabled: {{ 'true' if loop.first or network.dhcp is defined and network.dhcp or network.name in interface_overrides else 'false' }}
+{% if network.name in interface_overrides %}
+        address:
+        - ip: {{ interface_overrides[network.name].ipv4.address }}
+          prefix-length: {{ interface_overrides[network.name].ipv4['prefix-length'] }}
+        dhcp: false
+{% elif loop.first and not (network.dhcp is defined and network.dhcp) %}
+        address:
+        - ip: {{ node_ips[i|string] }}
+          prefix-length: {{ prefix }}
+        dhcp: false
+{% elif network.dhcp is defined and network.dhcp %}
+        dhcp: true
 {% endif %}
-      dns-resolver:
-        config:
-          server:
-            - {{ current_nameserver }}
-      routes:
-        config:
-          - destination: 0.0.0.0/0
-            next-hop-address: {{ current_gateway }}
-            next-hop-interface: {{ bond_interfaces[0].bond if bond_interfaces else interfaces[0].name }}
+      ipv6:
+        enabled: false
+{% endfor %}
+    dns-resolver:
+      config:
+        server:
+        - {{ nameserver }}
+    routes:
+      config:
+      - destination: 0.0.0.0/0
+        next-hop-address: {{ node_overrides.gateway.address | default(gateway) }}
+        next-hop-interface: {{ node_overrides.gateway.interface | default(networks[0].name) }}
 {% endfor %}

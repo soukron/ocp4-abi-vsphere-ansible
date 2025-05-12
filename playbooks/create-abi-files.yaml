@@ -2,6 +2,9 @@
 - name: Create required files for ABI deployment
   hosts: localhost
   gather_facts: false
+  vars:
+    control_plane_networks: "{{ vms.controlPlaneData.networks }}"
+    compute_networks: "{{ vms.computeData.networks }}"
 
   tasks:
   - name: Store clusterDir in a fact
@@ -15,13 +18,27 @@
       path: "{{ clusterDir }}"
       state: directory
 
+  - name: Generate MAC addresses if not already generated
+    ansible.builtin.include_tasks: tasks/generate-macs.yaml
+    when: node_macs is not defined
+
+  - name: Generate IP addresses for each node
+    ansible.builtin.set_fact:
+      node_ips: "{{ node_ips | default({}) | combine({item|string: ip_address}) }}"
+    vars:
+      base_ip: "{{ machineNetwork.firstIP }}"
+      ip_parts: "{{ base_ip.split('.') }}"
+      last_octet: "{{ (ip_parts[3] | int) + (item | int) }}"
+      ip_address: "{{ ip_parts[0:3] | join('.') + '.' + (last_octet | string) }}"
+    with_sequence: start=0 end="{{ controlPlaneReplicas + computeReplicas - 1 }}"
+
   - name: Generate ABI input files
     ansible.builtin.template:
       src: "../templates/{{ item }}.j2"
       dest: "{{ clusterDir }}/{{ item }}"
     vars:
-      control_plane_interfaces: "{{ vms.controlPlaneData.interfaces }}"
-      compute_interfaces: "{{ vms.computeData.interfaces }}"
+      node_macs: "{{ node_macs }}"
+      node_ips: "{{ node_ips }}"
     with_items:
     - install-config.yaml
     - agent-config.yaml
@@ -31,8 +48,8 @@
       src: "../templates/{{ item }}.j2"
       dest: "{{ clusterDir }}/{{ item }}.orig"
     vars:
-      control_plane_interfaces: "{{ vms.controlPlaneData.interfaces }}"
-      compute_interfaces: "{{ vms.computeData.interfaces }}"
+      node_macs: "{{ node_macs }}"
+      node_ips: "{{ node_ips }}"
     with_items:
     - install-config.yaml
     - agent-config.yaml

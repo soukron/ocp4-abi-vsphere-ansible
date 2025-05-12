@@ -4,45 +4,31 @@
   gather_facts: false
   vars:
     state: poweredon
-    firstMACParts: "{{ machineNetwork.firstMAC.split(':') }}"
-    lastOctetMAC: "{{ firstMACParts[-1] | int }}"
-    mac_counter: "{{ lastOctetMAC }}"
+    control_plane_networks: "{{ vms.controlPlaneData.networks }}"
+    compute_networks: "{{ vms.computeData.networks }}"
 
   tasks:
-    - name: Generate MAC addresses
-      set_fact:
-        generated_macs: "{{ generated_macs | default([]) + [next_mac] }}"
-        mac_counter: "{{ mac_counter | int + 1 }}"
-      vars:
-        next_mac: >-
-          {{ (firstMACParts[:-1] + [('%02x' | format(mac_counter | int))]) | join(':') }}
-      loop: "{{ range(
-        (controlPlaneReplicas | int * vms.controlPlaneData.interfaces | length) +
-        (computeReplicas | int * vms.computeData.interfaces | length)
-      ) }}"
+    - name: Generate MAC addresses if not already generated
+      ansible.builtin.include_tasks: tasks/generate-macs.yaml
+      when: node_macs is not defined
 
     - name: Generate network and disk configurations for all nodes
       set_fact:
-        all_node_networks: "{{ all_node_networks | default([]) + [node_networks] }}"
-        all_node_disks: "{{ all_node_disks | default([]) + [node_disks] }}"
+        all_vm_networks: "{{ all_vm_networks | default([]) + [vm_networks] }}"
+        all_vm_disks: "{{ all_vm_disks | default([]) + [vm_disks] }}"
       vars:
         vmData: "{{ vms.controlPlaneData if vm_index < controlPlaneReplicas | int else vms.computeData }}"
-        hostname: "node{{ '%02d' | format(vm_index) }}.{{ name }}.{{ baseDomain }}"
-        override: "{{ (templateOverrides.vms[hostname] if templateOverrides.vms is defined and templateOverrides.vms[hostname] is defined else {}) }}"
-        start: "{{ vm_index * vmData.interfaces | length }}"
-        node_networks: "{{ node_networks_list }}"
-        node_networks_list: >-
+        vm_networks: >-
           [
-          {% for interface in vmData.interfaces %}
+          {% for interface_name, interface_data in node_macs[vm_index|string].items() %}
             {
-              "name": "{{ override.networks[loop.index0] if override.networks is defined and override.networks[loop.index0] is defined else interface.network }}",
-              "mac": "{{ override.macs[loop.index0] if override.macs is defined and override.macs[loop.index0] is defined else generated_macs[(start | int) + loop.index0] }}",
-              "device_type": "vmxnet3"
+              "name": "{{ interface_data.network }}",
+              "mac": "{{ interface_data.mac }}",
+              "device_type": "{{ interface_data.device_type }}"
             }{% if not loop.last %},{% endif %}
           {% endfor %}
           ]
-        node_disks: "{{ node_disks_list }}"
-        node_disks_list: >-
+        vm_disks: >-
           [
           {% for disk in vmData.disk %}
             {
@@ -67,12 +53,12 @@
         guest_id: "rhel9_64Guest"
         name: "node{{ '%02d' | format(vm_index) }}.{{ name }}.{{ baseDomain }}"
         state: "{{ state }}"
-        disk: "{{ all_node_disks[vm_index] }}"
+        disk: "{{ all_vm_disks[vm_index] }}"
         hardware:
           memory_mb: "{{ vmData.memory }}"
           num_cpus: "{{ vmData.cpu }}"
           scsi: paravirtual
-        networks: "{{ all_node_networks[vm_index] }}"
+        networks: "{{ all_vm_networks[vm_index] }}"
         cdrom:
           - controller_number: 0
             unit_number: 0

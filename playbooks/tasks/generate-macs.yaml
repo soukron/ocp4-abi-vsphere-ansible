@@ -1,0 +1,41 @@
+---
+- name: Generate MAC addresses for all nodes
+  ansible.builtin.set_fact:
+    node_macs: "{{ node_macs | default({}) | combine({item|string: {}}) }}"
+  with_sequence: start=0 end="{{ controlPlaneReplicas + computeReplicas - 1 }}"
+
+- name: Generate list of default node networks
+  ansible.builtin.set_fact:
+    node_networks: "{{ node_networks | default([]) + [{'node_index': item, 'networks': (item|int < controlPlaneReplicas) | ternary(control_plane_networks, compute_networks)}] }}"
+  with_sequence: start=0 end="{{ controlPlaneReplicas + computeReplicas - 1 }}"
+
+- name: Generate MAC addresses for each interface
+  ansible.builtin.set_fact:
+    node_macs: "{{ node_macs | combine({node_index|string: node_macs[node_index|string] | combine({interface.name: {'mac': mac_address | trim, 'network': network_name, 'device_type': 'vmxnet3'}})}) }}"
+  vars:
+    node_index: "{{ item.0.node_index }}"
+    interface: "{{ item.1 }}"
+    hostname: "{{ 'node%02d.%s.%s' | format(node_index|int, name, baseDomain) }}"
+    node_overrides: "{{ templateOverrides.vms[hostname] if templateOverrides.vms is defined and hostname in templateOverrides.vms else {} }}"
+    interface_overrides: "{{ node_overrides.interfaces | selectattr('name', 'equalto', interface.name) | list | first if node_overrides.interfaces is defined else {} }}"
+    network_name: "{{ (interface_overrides.network | default(interface.network)) }}"
+    base_mac: "{{ machineNetwork.firstMAC }}"
+    mac_parts: "{{ base_mac.split(':') }}"
+    is_first_interface: "{{ interface.name == 'ens192' }}"
+    last_byte: >-
+      {% if is_first_interface %}
+      {{ ((mac_parts[5] | int(16)) + (node_index | int)) % 256 }}
+      {% else %}
+      {{ (range(0, 64) | random) }}
+      {% endif %}
+    mac_address: >-
+      {% if interface_overrides['mac-address'] is defined %}
+      {{ interface_overrides['mac-address'] }}
+      {% elif is_first_interface %}
+      {{ mac_parts[0:5] | join(':') + ':' + ('%02x' | format(last_byte | int)) }}
+      {% else %}
+      {{ '00:50:56:' + ('%02x' | format(range(0, 64) | random)) + ':' + ('%02x' | format(range(0, 255) | random)) + ':' + ('%02x' | format(range(0, 255) | random)) }}
+      {% endif %}
+  with_subelements:
+    - "{{ node_networks }}"
+    - networks

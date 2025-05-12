@@ -36,7 +36,7 @@ all:
         memory: 16384
         disk:
         - 100
-        interfaces:
+        networks:
         - name: ens192
           network: VM Routed Network
         datastore: esx1-datastore
@@ -45,7 +45,7 @@ all:
         memory: 8192
         disk:
         - 100
-        interfaces:
+        networks:
         - name: ens192
           network: VM Routed Network
         datastore: esx1-datastore
