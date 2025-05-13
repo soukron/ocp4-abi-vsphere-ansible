@@ -7,7 +7,7 @@ rendezvousIP: {{ machineNetwork.rendezvousIP if machineNetwork.rendezvousIP is d
 hosts:
 {% for i in range(controlPlaneReplicas|int + computeReplicas|int) %}
 {%- set hostname = "node%02d.%s.%s"|format(i, name, baseDomain) %}
-{%- set networks = control_plane_networks if i < controlPlaneReplicas|int else compute_networks %}
+{%- set networks = node_macs[i|string] %}
 {%- set prefix = machineNetwork.cidr.split('/')[1] %}
 {%- set nameserver = machineNetwork.nameserver %}
 {%- set gateway = machineNetwork.gateway %}
@@ -21,25 +21,25 @@ hosts:
 - hostname: {{ hostname }}
   role: {{ 'master' if i < controlPlaneReplicas|int else 'worker' }}
   interfaces:
-{% for network in networks %}
-  - name: {{ network.name }}
-    macAddress: {{ node_macs[i|string][network.name].mac }}
+{% for name, network in networks.items() %}
+  - name: {{ name }}
+    macAddress: {{ network.mac }}
 {% endfor %}
   rootDeviceHints:
     deviceName: /dev/sda
   networkConfig:
     interfaces:
-{% for network in networks %}
-    - name: {{ network.name }}
+{% for name, network in networks.items() %}
+    - name: {{ name }}
       type: ethernet
       state: up
-      mac-address: {{ node_macs[i|string][network.name].mac }}
+      mac-address: {{ network.mac }}
       ipv4:
-        enabled: {{ 'true' if loop.first or network.dhcp is defined and network.dhcp or network.name in interface_overrides else 'false' }}
-{% if network.name in interface_overrides %}
+        enabled: {{ 'true' if loop.first or network.dhcp is defined and network.dhcp or name in interface_overrides else 'false' }}
+{% if name in interface_overrides %}
         address:
-        - ip: {{ interface_overrides[network.name].ipv4.address }}
-          prefix-length: {{ interface_overrides[network.name].ipv4['prefix-length'] }}
+        - ip: {{ interface_overrides[name].ipv4.address }}
+          prefix-length: {{ interface_overrides[name].ipv4['prefix-length'] }}
         dhcp: false
 {% elif loop.first and not (network.dhcp is defined and network.dhcp) %}
         address:
@@ -60,5 +60,5 @@ hosts:
       config:
       - destination: 0.0.0.0/0
         next-hop-address: {{ node_overrides.gateway.address | default(gateway) }}
-        next-hop-interface: {{ node_overrides.gateway.interface | default(networks[0].name) }}
+        next-hop-interface: {{ node_overrides.gateway.interface | default(networks.keys() | list | first) }}
 {% endfor %}

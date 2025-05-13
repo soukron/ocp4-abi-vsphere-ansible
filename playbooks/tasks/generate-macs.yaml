@@ -4,14 +4,28 @@
     node_macs: "{{ node_macs | default({}) | combine({item|string: {}}) }}"
   with_sequence: start=0 end="{{ controlPlaneReplicas + computeReplicas - 1 }}"
 
-- name: Generate list of default node networks
+- name: Generate base node networks
   ansible.builtin.set_fact:
-    node_networks: "{{ node_networks | default([]) + [{'node_index': item, 'networks': (item|int < controlPlaneReplicas) | ternary(control_plane_networks, compute_networks)}] }}"
+    base_node_networks: "{{ base_node_networks | default([]) + [ { 'node_index': item, 'networks': (item|int < controlPlaneReplicas) | ternary(control_plane_networks, compute_networks) } ] }}"
   with_sequence: start=0 end="{{ controlPlaneReplicas + computeReplicas - 1 }}"
+
+- name: Merge additional_networks into node_networks
+  ansible.builtin.set_fact:
+    node_networks: "{{ node_networks | default([]) + [ {
+      'node_index': item.node_index,
+      'hostname': 'node%02d.%s.%s' | format(item.node_index|int, name, baseDomain),
+      'networks': item.networks + (templateOverrides.vms[('node%02d.%s.%s' | format(item.node_index|int, name, baseDomain))].additional_networks | default([]))
+    } ] }}"
+  loop: "{{ base_node_networks }}"
+
+- name: Debug node_networks
+  ansible.builtin.debug:
+    var: node_networks
+    verbosity: 0
 
 - name: Generate MAC addresses for each interface
   ansible.builtin.set_fact:
-    node_macs: "{{ node_macs | combine({node_index|string: node_macs[node_index|string] | combine({interface.name: {'mac': mac_address | trim, 'network': network_name, 'device_type': 'vmxnet3'}})}) }}"
+    node_macs: "{{ node_macs | combine({node_index|string: node_macs[node_index|string] | combine({interface.name: {'mac': mac_address | trim, 'network': network_name, 'device_type': 'vmxnet3', 'dhcp': interface.dhcp | default(false)}})}) }}"
   vars:
     node_index: "{{ item.0.node_index }}"
     interface: "{{ item.1 }}"
@@ -39,3 +53,8 @@
   with_subelements:
     - "{{ node_networks }}"
     - networks
+
+- name: Debug node_macs
+  ansible.builtin.debug:
+    var: node_macs
+    verbosity: 0
