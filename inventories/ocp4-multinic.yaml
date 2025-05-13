@@ -10,7 +10,7 @@ all:
     controlPlaneReplicas: 3
     computeReplicas: 2
 
-    networkType: OpenShiftSDN
+    networkType: OVNKubernetes
     machineNetwork:
       cidr: 10.11.0.0/24
       gateway: 10.11.0.1
@@ -52,9 +52,6 @@ all:
           network: VM Routed Network
         - name: ens224
           network: VM Isolated Network
-        - name: ens256
-          network: Routed Network
-          dhcp: true
         datastore: esx1-datastore
 
     templateOverrides:
@@ -63,31 +60,31 @@ all:
           interfaces:
           - name: ens224
             ipv4:
-              address: 10.11.1.100
+              address: 10.11.1.103
               prefix-length: 24
         node01.ocp4.gmbros.local:
           interfaces:
           - name: ens224
             ipv4:
-              address: 10.11.1.101
+              address: 10.11.1.104
               prefix-length: 24
         node02.ocp4.gmbros.local:
           interfaces:
           - name: ens224
             ipv4:
-              address: 10.11.1.102
+              address: 10.11.1.105
               prefix-length: 24
         node03.ocp4.gmbros.local:
-          gateway:
-            address: 10.0.0.1
-            interface: ens256
           interfaces:
           - name: ens224
-            mac-address: 00:50:56:0b:0b:0e
             ipv4:
-              address: 10.11.1.103
+              address: 10.11.1.106
               prefix-length: 24
         node04.ocp4.gmbros.local:
+          additional_networks:
+          - name: ens256
+            network: Routed Network
+            dhcp: true
           gateway:
             address: 10.0.0.1
             interface: ens256
@@ -95,5 +92,5 @@ all:
           - name: ens224
             mac-address: 00:50:56:0b:0b:0b
             ipv4:
-              address: 10.11.1.104
+              address: 10.11.1.107
               prefix-length: 24
