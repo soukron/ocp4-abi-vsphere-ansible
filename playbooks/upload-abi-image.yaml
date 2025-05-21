@@ -1,0 +1,32 @@
+---
+- name: Upload a given ISO file to a datastore
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    datastore: ""
+    iso_src: ""
+    iso_path: ""
+
+  tasks:
+  - name: Delete previous ISO image to datastore
+    community.vmware.vsphere_file:
+      hostname: '{{ vcenter.hostname }}'
+      username: '{{ vcenter.username }}'
+      password: '{{ vcenter.password }}'
+      validate_certs: no
+      datacenter: "{{ vcenter.datacenter }}"
+      datastore: "{{ datastore }}"
+      path: "{{ iso_path }}"
+      state: absent
+
+  - name: Upload ISO image to datastore
+    community.vmware.vsphere_copy:
+      hostname: '{{ vcenter.hostname }}'
+      username: '{{ vcenter.username }}'
+      password: '{{ vcenter.password }}'
+      validate_certs: no
+      src: "{{ iso_src }}"
+      datacenter: "{{ vcenter.datacenter }}"
+      datastore: "{{ datastore }}"
+      path: "{{ iso_path }}"
