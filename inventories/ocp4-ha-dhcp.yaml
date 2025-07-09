@@ -1,0 +1,56 @@
+all:
+  vars:
+    # optionally set a different clusterBaseDir for clusters
+    # defaults to "clusters/" in the repository directory
+    clusterBaseDir: ~/.local/ocp4/clusters
+
+    name: ocp4
+    baseDomain: gmbros.local
+
+    controlPlaneReplicas: 3
+    computeReplicas: 2
+
+    networkType: OVNKubernetes
+    machineNetwork:
+      cidr: 10.11.0.0/24
+    rendezvousIP: 10.11.0.103
+
+    ingressVIP: 10.11.0.100
+    apiVIP: 10.11.0.101
+
+    vms:
+      controlPlaneData:
+        cpu: 4
+        memory: 16384
+        disk:
+        - 100
+        networks:
+        - name: ens192
+          network: VM Routed Network
+        datastore: esx1-datastore
+      computeData:
+        cpu: 4
+        memory: 8192
+        disk:
+        - 100
+        networks:
+        - name: ens192
+          network: VM Routed Network
+        datastore: esx1-datastore
+
+    # Required static IP for rendezvous node
+    templateOverrides:
+      vms:
+        node00.ocp4.gmbros.local:
+          interfaces:
+          - name: ens192
+            ipv4:
+              address: 10.11.1.103
+              prefix-length: 24
+          dns-resolver:
+            config:
+              server:
+              - 10.11.1.1
+          gateway:
+            address: 10.11.1.1
+            interface: ens192

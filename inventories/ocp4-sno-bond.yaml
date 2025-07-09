@@ -31,6 +31,14 @@ all:
         disk:
         - 100
         networks:
-        - name: ens192
+        - name: bond0
           network: VM Routed Network
+          type: bond
+          link-aggregation:
+            mode: active-backup
+            options:
+              miimon: 140
+            port: 
+            - ens192
+            - ens224
         datastore: esx1-datastore

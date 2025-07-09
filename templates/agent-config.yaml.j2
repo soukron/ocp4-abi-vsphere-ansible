@@ -3,62 +3,94 @@ apiVersion: v1alpha1
 kind: AgentConfig
 metadata:
   name: {{ name }}
-rendezvousIP: {{ machineNetwork.rendezvousIP if machineNetwork.rendezvousIP is defined else machineNetwork.firstIP }}
+rendezvousIP: {{ rendezvousIP if rendezvousIP is defined else machineNetwork.firstIP }}
 hosts:
 {% for i in range(controlPlaneReplicas|int + computeReplicas|int) %}
 {%- set hostname = "node%02d.%s.%s"|format(i, name, baseDomain) %}
 {%- set networks = node_macs[i|string] %}
-{%- set prefix = machineNetwork.cidr.split('/')[1] %}
-{%- set nameserver = machineNetwork.nameserver %}
-{%- set gateway = machineNetwork.gateway %}
-{%- set node_overrides = templateOverrides.vms[hostname] if templateOverrides.vms is defined and hostname in templateOverrides.vms else {} %}
-{%- set interface_overrides = {} %}
-{%- if node_overrides.interfaces is defined %}
-{%-   for override in node_overrides.interfaces %}
-{%-     set _ = interface_overrides.update({override.name: override}) %}
-{%-   endfor %}
-{%- endif %}
+{%- set network_config = network_configs[hostname] if network_configs is defined and hostname in network_configs else {} %}
 - hostname: {{ hostname }}
   role: {{ 'master' if i < controlPlaneReplicas|int else 'worker' }}
   interfaces:
+{% if network_config and network_config.interfaces %}
+{% for interface in network_config.interfaces %}
+{% if interface['mac-address'] is defined %}
+  - name: {{ interface.name }}
+    macAddress: {{ interface['mac-address'] }}
+{% endif %}
+{% endfor %}
+{% else %}
 {% for name, network in networks.items() %}
   - name: {{ name }}
     macAddress: {{ network.mac }}
 {% endfor %}
+{% endif %}
   rootDeviceHints:
     deviceName: /dev/sda
   networkConfig:
+{% if network_config %}
+{% if network_config.interfaces %}
     interfaces:
-{% for name, network in networks.items() %}
-    - name: {{ name }}
-      type: ethernet
-      state: up
-      mac-address: {{ network.mac }}
+{% for interface in network_config.interfaces %}
+    - name: {{ interface.name }}
+      type: {{ interface.type }}
+      state: {{ interface.state }}
+{% if interface['mac-address'] is defined %}
+      mac-address: {{ interface['mac-address'] }}
+{% endif %}
+{% if interface['link-aggregation'] is defined %}
+      link-aggregation:
+        mode: {{ interface['link-aggregation'].mode }}
+        options:
+          miimon: {{ interface['link-aggregation'].options.miimon }}
+        port:
+{% for port in interface['link-aggregation'].port %}
+        - {{ port }}
+{% endfor %}
+{% endif %}
       ipv4:
-        enabled: {{ 'true' if loop.first or network.dhcp is defined and network.dhcp or name in interface_overrides else 'false' }}
-{% if name in interface_overrides %}
-        address:
-        - ip: {{ interface_overrides[name].ipv4.address }}
-          prefix-length: {{ interface_overrides[name].ipv4['prefix-length'] }}
+{% if interface.ipv4.address is defined %}
+        enabled: true
         dhcp: false
-{% elif loop.first and not (network.dhcp is defined and network.dhcp) %}
         address:
-        - ip: {{ node_ips[i|string] }}
-          prefix-length: {{ prefix }}
-        dhcp: false
-{% elif network.dhcp is defined and network.dhcp %}
+{% if interface.ipv4.address is string %}
+        - ip: {{ interface.ipv4.address }}
+          prefix-length: {{ interface.ipv4['prefix-length'] | default(prefix) }}
+{% else %}
+{% for addr in interface.ipv4.address %}
+        - ip: {{ addr.ip | default(addr) }}
+          prefix-length: {{ addr['prefix-length'] | default(prefix) }}
+{% endfor %}
+{% endif %}
+{% else %}
+{% if interface.name not in (network_config.interfaces | selectattr('link-aggregation', 'defined') | map(attribute='link-aggregation') | map(attribute='port') | flatten) %}
+        enabled: true
         dhcp: true
+{% else %}
+        enabled: false
+        dhcp: false
+{% endif %}
 {% endif %}
       ipv6:
         enabled: false
 {% endfor %}
+{% endif %}
+{% if network_config['dns-resolver'] is defined %}
     dns-resolver:
       config:
         server:
-        - {{ nameserver }}
+{% for dns_server in network_config['dns-resolver'].config.server %}
+        - {{ dns_server }}
+{% endfor %}
+{% endif %}
+{% if network_config.routes is defined and network_config.routes.config %}
     routes:
       config:
-      - destination: 0.0.0.0/0
-        next-hop-address: {{ node_overrides.gateway.address | default(gateway) }}
-        next-hop-interface: {{ node_overrides.gateway.interface | default(networks.keys() | list | first) }}
+{% for route in network_config.routes.config %}
+      - destination: {{ route.destination }}
+        next-hop-address: {{ route['next-hop-address'] }}
+        next-hop-interface: {{ route['next-hop-interface'] }}
+{% endfor %}
+{% endif %}
+{% endif %}
 {% endfor %}

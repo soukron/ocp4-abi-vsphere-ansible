@@ -4,7 +4,7 @@
   gather_facts: false
   vars:
     control_plane_networks: "{{ vms.controlPlaneData.networks }}"
-    compute_networks: "{{ vms.computeData.networks }}"
+    compute_networks: "{{ vms.computeData.networks if computeReplicas > 0 and vms.computeData is defined else [] }}"
 
   tasks:
   - name: Store clusterDir in a fact
@@ -22,7 +22,11 @@
     ansible.builtin.include_tasks: tasks/generate-macs.yaml
     when: node_macs is not defined
 
-  - name: Generate IP addresses for each node
+  - name: Initialize node_ips as empty dict
+    ansible.builtin.set_fact:
+      node_ips: {}
+
+  - name: Generate IP addresses for each node sequentially
     ansible.builtin.set_fact:
       node_ips: "{{ node_ips | default({}) | combine({item|string: ip_address}) }}"
     vars:
@@ -31,6 +35,46 @@
       last_octet: "{{ (ip_parts[3] | int) + (item | int) }}"
       ip_address: "{{ ip_parts[0:3] | join('.') + '.' + (last_octet | string) }}"
     with_sequence: start=0 end="{{ controlPlaneReplicas + computeReplicas - 1 }}"
+    when: machineNetwork.firstIP is defined
+
+  - name: Set DHCP/static IP mode based on firstIP
+    ansible.builtin.set_fact:
+      use_dhcp: "{{ machineNetwork.firstIP is not defined }}"
+
+  - name: Prepare network nodes data
+    ansible.builtin.set_fact:
+      network_nodes: "{{ network_nodes | default([]) + [{
+        'hostname': 'node%02d.%s.%s' | format(i, name, baseDomain),
+        'node_data': {
+          'networks': node_macs[i|string],
+          'ip': node_ips[i|string] if node_ips is defined and i|string in node_ips else None,
+          'prefix_length': machineNetwork.cidr.split('/')[1],
+          'use_dhcp': use_dhcp,
+          'bond_interfaces': (i|int >= controlPlaneReplicas|int) | ternary(
+            compute_networks | selectattr('type', 'defined') | selectattr('type', 'equalto', 'bond') | list if computeReplicas > 0 and compute_networks is defined else [],
+            control_plane_networks | selectattr('type', 'defined') | selectattr('type', 'equalto', 'bond') | list
+          )
+        },
+        'node_overrides': templateOverrides.vms['node%02d.%s.%s' | format(i, name, baseDomain)] if templateOverrides.vms is defined and 'node%02d.%s.%s' | format(i, name, baseDomain) in templateOverrides.vms else {}
+      }] }}"
+    loop: "{{ range(0, controlPlaneReplicas + computeReplicas) | list }}"
+    loop_control:
+      loop_var: i
+
+  - name: Initialize network_configs as empty dict
+    ansible.builtin.set_fact:
+      network_configs: {}
+
+  - name: Build network configuration for each node
+    ansible.builtin.include_tasks: tasks/build-network-config.yaml
+
+  - name: Debug network configuration variables
+    ansible.builtin.debug:
+      var: "{{ item }}"
+    loop:
+      - node_macs
+      - node_ips
+      - network_configs
 
   - name: Generate ABI input files
     ansible.builtin.template:
@@ -39,6 +83,7 @@
     vars:
       node_macs: "{{ node_macs }}"
       node_ips: "{{ node_ips }}"
+      network_configs: "{{ network_configs | default({}) }}"
     with_items:
     - install-config.yaml
     - agent-config.yaml
