@@ -10,7 +10,7 @@ hosts:
 {%- set networks = node_macs[i|string] %}
 {%- set prefix = machineNetwork.cidr.split('/')[1] %}
 {%- set default_dns_servers = machineNetwork['dns-resolver'].config.server if machineNetwork['dns-resolver'] is defined and machineNetwork['dns-resolver'].config is defined and machineNetwork['dns-resolver'].config.server is defined %}
-{%- set gateway = machineNetwork.gateway %}
+{%- set gateway = machineNetwork.gateway.address if machineNetwork.gateway is defined and machineNetwork.gateway.address is defined else machineNetwork.gateway %}
 {%- set node_overrides = templateOverrides.vms[hostname] if templateOverrides.vms is defined and hostname in templateOverrides.vms else {} %}
 {%- set interface_overrides = {} %}
 {%- if node_overrides.interfaces is defined %}
