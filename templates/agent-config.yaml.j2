@@ -29,6 +29,16 @@ hosts:
 {%-     set _ = individual_interfaces.append(network) %}
 {%-   endif %}
 {%- endfor %}
+{%- set bond_ports = [] %}
+{%- for bond in bond_interfaces %}
+{%-   for port in bond['link-aggregation'].port %}
+{%-     set _ = bond_ports.append(port) %}
+{%-   endfor %}
+{%- endfor %}
+{%- set has_bond0 = original_networks | selectattr('name', 'equalto', 'bond0') | list | length > 0 %}
+{%- set default_gateway_interface = 'bond0' if has_bond0 else 'ens192' %}
+{%- set vm_gateway_interface = vmData.gateway.interface if vmData.gateway is defined and vmData.gateway.interface is defined else default_gateway_interface %}
+{%- set host_gateway_interface = node_overrides.gateway.interface if node_overrides.gateway is defined and node_overrides.gateway.interface is defined else vm_gateway_interface %}
 - hostname: {{ hostname }}
   role: {{ 'master' if i < controlPlaneReplicas|int else 'worker' }}
   interfaces:
@@ -41,23 +51,24 @@ hosts:
   networkConfig:
     interfaces:
 {% for name, network in networks.items() %}
+{%- set is_bond_port = name in bond_ports %}
     - name: {{ name }}
       type: ethernet
       state: up
       mac-address: {{ network.mac }}
       ipv4:
-        enabled: {{ 'true' if loop.first or network.dhcp is defined and network.dhcp or name in interface_overrides else 'false' }}
-{% if name in interface_overrides %}
+        enabled: {{ 'false' if is_bond_port else ('true' if loop.first or network.dhcp is defined and network.dhcp or name in interface_overrides else 'false') }}
+{% if name in interface_overrides and not is_bond_port %}
         address:
         - ip: {{ interface_overrides[name].ipv4.address }}
           prefix-length: {{ interface_overrides[name].ipv4['prefix-length'] }}
         dhcp: false
-{% elif loop.first and not (network.dhcp is defined and network.dhcp) %}
+{% elif loop.first and not (network.dhcp is defined and network.dhcp) and not is_bond_port %}
         address:
         - ip: {{ node_ips[i|string] }}
           prefix-length: {{ prefix }}
         dhcp: false
-{% elif network.dhcp is defined and network.dhcp %}
+{% elif network.dhcp is defined and network.dhcp and not is_bond_port %}
         dhcp: true
 {% endif %}
       ipv6:
@@ -94,5 +105,5 @@ hosts:
       config:
       - destination: 0.0.0.0/0
         next-hop-address: {{ node_overrides.gateway.address | default(gateway) }}
-        next-hop-interface: {{ node_overrides.gateway.interface | default(networks.keys() | list | first) }}
+        next-hop-interface: {{ host_gateway_interface }}
 {% endfor %}
