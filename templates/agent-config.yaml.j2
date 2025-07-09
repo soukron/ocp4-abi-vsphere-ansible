@@ -18,6 +18,17 @@ hosts:
 {%-     set _ = interface_overrides.update({override.name: override}) %}
 {%-   endfor %}
 {%- endif %}
+{%- set vmData = vms.controlPlaneData if i < controlPlaneReplicas|int else vms.computeData %}
+{%- set original_networks = vmData.networks %}
+{%- set bond_interfaces = [] %}
+{%- set individual_interfaces = [] %}
+{%- for network in original_networks %}
+{%-   if network.type is defined and network.type == 'bond' %}
+{%-     set _ = bond_interfaces.append(network) %}
+{%-   else %}
+{%-     set _ = individual_interfaces.append(network) %}
+{%-   endif %}
+{%- endfor %}
 - hostname: {{ hostname }}
   role: {{ 'master' if i < controlPlaneReplicas|int else 'worker' }}
   interfaces:
@@ -48,6 +59,29 @@ hosts:
         dhcp: false
 {% elif network.dhcp is defined and network.dhcp %}
         dhcp: true
+{% endif %}
+      ipv6:
+        enabled: false
+{% endfor %}
+{% for bond in bond_interfaces %}
+    - name: {{ bond.name }}
+      type: bond
+      state: up
+      link-aggregation:
+        mode: {{ bond['link-aggregation'].mode }}
+        options:
+          miimon: {{ bond['link-aggregation'].options.miimon }}
+        port:
+{% for port in bond['link-aggregation'].port %}
+        - {{ port }}
+{% endfor %}
+      ipv4:
+        enabled: {{ 'true' if loop.first else 'false' }}
+{% if loop.first %}
+        address:
+        - ip: {{ node_ips[i|string] }}
+          prefix-length: {{ prefix }}
+        dhcp: false
 {% endif %}
       ipv6:
         enabled: false
