@@ -3,7 +3,7 @@ apiVersion: v1alpha1
 kind: AgentConfig
 metadata:
   name: {{ name }}
-rendezvousIP: {{ machineNetwork.rendezvousIP if machineNetwork.rendezvousIP is defined else machineNetwork.firstIP }}
+rendezvousIP: {{ rendezvousIP if rendezvousIP is defined else machineNetwork.firstIP }}
 hosts:
 {% for i in range(controlPlaneReplicas|int + computeReplicas|int) %}
 {%- set hostname = "node%02d.%s.%s"|format(i, name, baseDomain) %}
@@ -63,12 +63,12 @@ hosts:
         - ip: {{ interface_overrides[name].ipv4.address }}
           prefix-length: {{ interface_overrides[name].ipv4['prefix-length'] }}
         dhcp: false
-{% elif loop.first and not (network.dhcp is defined and network.dhcp) and not is_bond_port %}
+{% elif loop.first and not (network.dhcp is defined and network.dhcp) and not is_bond_port and not (use_dhcp is defined and use_dhcp) and node_ips is defined %}
         address:
         - ip: {{ node_ips[i|string] }}
           prefix-length: {{ prefix }}
         dhcp: false
-{% elif network.dhcp is defined and network.dhcp and not is_bond_port %}
+{% elif (network.dhcp is defined and network.dhcp) or (use_dhcp is defined and use_dhcp) and not is_bond_port %}
         dhcp: true
 {% endif %}
       ipv6:
@@ -88,22 +88,32 @@ hosts:
 {% endfor %}
       ipv4:
         enabled: {{ 'true' if loop.first else 'false' }}
-{% if loop.first %}
+{% if loop.first and not (use_dhcp is defined and use_dhcp) and node_ips is defined %}
         address:
         - ip: {{ node_ips[i|string] }}
           prefix-length: {{ prefix }}
         dhcp: false
+{% elif loop.first and (use_dhcp is defined and use_dhcp) %}
+        dhcp: true
 {% endif %}
       ipv6:
         enabled: false
 {% endfor %}
+{% if not (use_dhcp is defined and use_dhcp) or node_overrides.dns is defined or node_overrides.gateway is defined %}
     dns-resolver:
       config:
         server:
+{% if node_overrides.dns is defined and node_overrides.dns.servers is defined %}
+{% for dns_server in node_overrides.dns.servers %}
+        - {{ dns_server }}
+{% endfor %}
+{% else %}
         - {{ nameserver }}
+{% endif %}
     routes:
       config:
       - destination: 0.0.0.0/0
-        next-hop-address: {{ node_overrides.gateway.address | default(gateway) }}
+        next-hop-address: {{ node_overrides.gateway.address | default(gateway | default('')) }}
         next-hop-interface: {{ host_gateway_interface }}
+{% endif %}
 {% endfor %}

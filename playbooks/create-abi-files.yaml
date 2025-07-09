@@ -22,7 +22,11 @@
     ansible.builtin.include_tasks: tasks/generate-macs.yaml
     when: node_macs is not defined
 
-  - name: Generate IP addresses for each node
+  - name: Initialize node_ips as empty dict
+    ansible.builtin.set_fact:
+      node_ips: {}
+
+  - name: Generate IP addresses for each node sequentially
     ansible.builtin.set_fact:
       node_ips: "{{ node_ips | default({}) | combine({item|string: ip_address}) }}"
     vars:
@@ -31,6 +35,11 @@
       last_octet: "{{ (ip_parts[3] | int) + (item | int) }}"
       ip_address: "{{ ip_parts[0:3] | join('.') + '.' + (last_octet | string) }}"
     with_sequence: start=0 end="{{ controlPlaneReplicas + computeReplicas - 1 }}"
+    when: machineNetwork.firstIP is defined
+
+  - name: Set DHCP/static IP mode based on firstIP
+    ansible.builtin.set_fact:
+      use_dhcp: "{{ machineNetwork.firstIP is not defined }}"
 
   - name: Generate ABI input files
     ansible.builtin.template:
