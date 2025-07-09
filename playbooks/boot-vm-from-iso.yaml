@@ -1,0 +1,80 @@
+---
+- name: Boot VM from ISO
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    vm_name: ""
+    datastore: ""
+    iso_path: ""
+
+  tasks:
+  - name: Power off virtual machines (forced shutdown)
+    community.vmware.vmware_guest:
+      hostname: "{{ vcenter.hostname }}"
+      username: "{{ vcenter.username }}"
+      password: "{{ vcenter.password }}"
+      datacenter: "{{ vcenter.datacenter }}"
+      validate_certs: no
+      name: "{{ vm_name }}"
+      state: poweredoff
+      force: yes
+  
+  - name: Change ISO image for CD-ROM
+    community.vmware.vmware_guest:
+      hostname: "{{ vcenter.hostname }}"
+      username: "{{ vcenter.username }}"
+      password: "{{ vcenter.password }}"
+      datacenter: "{{ vcenter.datacenter }}"
+      validate_certs: no
+      name: "{{ vm_name }}"
+      state: present
+      cdrom:
+      - controller_number: 0
+        unit_number: 0
+        state: present
+        iso_path: "[{{ datastore }}] {{ iso_path }}"
+        start_connected: true
+        allow_guest_control: true
+
+  - name: Change virtual machine's boot order and related parameters
+    community.vmware.vmware_guest_boot_manager:
+      hostname: "{{ vcenter.hostname }}"
+      username: "{{ vcenter.username }}"
+      password: "{{ vcenter.password }}"
+      validate_certs: no
+      name: "{{ vm_name }}"
+      boot_delay: 2000
+      boot_order:
+        - cdrom
+        - disk
+    delegate_to: localhost
+    register: vm_boot_order
+
+  - name: Power on virtual machines
+    community.vmware.vmware_guest:
+      hostname: "{{ vcenter.hostname }}"
+      username: "{{ vcenter.username }}"
+      password: "{{ vcenter.password }}"
+      datacenter: "{{ vcenter.datacenter }}"
+      validate_certs: no
+      name: "{{ vm_name }}"
+      state: poweredon
+
+  - name: Pause before reverting boot order
+    ansible.builtin.pause:
+      seconds: 10
+  
+  - name: Change virtual machine's boot order and related parameters
+    community.vmware.vmware_guest_boot_manager:
+      hostname: "{{ vcenter.hostname }}"
+      username: "{{ vcenter.username }}"
+      password: "{{ vcenter.password }}"
+      validate_certs: no
+      name: "{{ vm_name }}"
+      boot_delay: 2000
+      boot_order:
+        - disk
+        - cdrom
+    delegate_to: localhost
+    register: vm_boot_order

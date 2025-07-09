@@ -1,0 +1,56 @@
+---
+- name: Reinstall ABI cluster
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+  - name: Store clusterDir in a fact
+    ansible.builtin.set_fact: clusterDir="{{ clusterBaseDir|default('../clusters') }}/{{ name }}.{{ baseDomain }}"
+
+  - name: Power off virtual machines
+    community.vmware.vmware_guest:
+      hostname: "{{ vcenter.hostname }}"
+      username: "{{ vcenter.username }}"
+      password: "{{ vcenter.password }}"
+      datacenter: "{{ vcenter.datacenter }}"
+      validate_certs: no
+      name: "node{{ '%02d'|format(loop) }}.{{ name }}.{{ baseDomain }}"
+      state: poweredoff
+    loop: "{{ range(controlPlaneReplicas|int + computeReplicas|int ) }}"
+    loop_control:
+      loop_var: loop
+
+  - name: Delete all disks from each VM
+    community.vmware.vmware_guest:
+      hostname: "{{ vcenter.hostname }}"
+      username: "{{ vcenter.username }}"
+      password: "{{ vcenter.password }}"
+      datacenter: "{{ vcenter.datacenter }}"
+      validate_certs: no
+      name: "node{{ '%02d'|format(vm_index) }}.{{ name }}.{{ baseDomain }}"
+      state: present
+      disk: []
+    loop: "{{ range(controlPlaneReplicas|int + computeReplicas|int ) }}"
+    loop_control:
+      loop_var: vm_index
+
+  - name: Delete ISO image from datastore
+    community.vmware.vsphere_file:
+      hostname: '{{ vcenter.hostname }}'
+      username: '{{ vcenter.username }}'
+      password: '{{ vcenter.password }}'
+      validate_certs: no
+      datacenter: "{{ vcenter.datacenter }}"
+      datastore: "{{ item }}"
+      path: "iso/{{ name }}-agent.x86_64.iso"
+      state: absent
+    with_items: "{{ vms | dict2items | selectattr('value.datastore', 'defined') | map(attribute='value.datastore') | list | unique }}"
+
+  - name: Remove cluster directory
+    ansible.builtin.shell: "rm -vfr {{ clusterDir }}"
+
+  - name: Set create_new_vms to false
+    ansible.builtin.set_fact:
+      create_new_vms: false
+
+#- ansible.builtin.import_playbook: create-cluster.yaml 
