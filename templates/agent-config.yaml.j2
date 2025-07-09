@@ -9,7 +9,7 @@ hosts:
 {%- set hostname = "node%02d.%s.%s"|format(i, name, baseDomain) %}
 {%- set networks = node_macs[i|string] %}
 {%- set prefix = machineNetwork.cidr.split('/')[1] %}
-{%- set nameserver = machineNetwork.nameserver %}
+{%- set default_dns_servers = machineNetwork['dns-resolver'].config.server if machineNetwork['dns-resolver'] is defined and machineNetwork['dns-resolver'].config is defined and machineNetwork['dns-resolver'].config.server is defined %}
 {%- set gateway = machineNetwork.gateway %}
 {%- set node_overrides = templateOverrides.vms[hostname] if templateOverrides.vms is defined and hostname in templateOverrides.vms else {} %}
 {%- set interface_overrides = {} %}
@@ -108,7 +108,9 @@ hosts:
         - {{ dns_server }}
 {% endfor %}
 {% else %}
-        - {{ nameserver }}
+{% for dns_server in default_dns_servers %}
+        - {{ dns_server }}
+{% endfor %}
 {% endif %}
     routes:
       config:
