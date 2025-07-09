@@ -18,9 +18,18 @@
     } ] }}"
   loop: "{{ base_node_networks }}"
 
-- name: Debug node_networks
+- name: Expand bond interfaces into individual network interfaces
+  ansible.builtin.set_fact:
+    expanded_networks: "{{ expanded_networks | default([]) + [ {
+      'node_index': item.node_index,
+      'hostname': item.hostname,
+      'networks': item.networks | expand_bond_interfaces
+    } ] }}"
+  loop: "{{ node_networks }}"
+
+- name: Debug expanded_networks
   ansible.builtin.debug:
-    var: node_networks
+    var: expanded_networks
     verbosity: 0
 
 - name: Generate MAC addresses for each interface
@@ -51,7 +60,7 @@
       {{ '00:50:56:' + ('%02x' | format(range(0, 64) | random)) + ':' + ('%02x' | format(range(0, 255) | random)) + ':' + ('%02x' | format(range(0, 255) | random)) }}
       {% endif %}
   with_subelements:
-    - "{{ node_networks }}"
+    - "{{ expanded_networks }}"
     - networks
 
 - name: Debug node_macs
