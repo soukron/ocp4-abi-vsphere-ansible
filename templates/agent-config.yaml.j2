@@ -36,7 +36,7 @@ hosts:
 {%-   endfor %}
 {%- endfor %}
 {%- set has_bond0 = original_networks | selectattr('name', 'equalto', 'bond0') | list | length > 0 %}
-{%- set default_gateway_interface = 'bond0' if has_bond0 else 'ens192' %}
+{%- set default_gateway_interface = 'bond0' if has_bond0 else (machineNetwork.gateway.interface if machineNetwork.gateway is defined and machineNetwork.gateway.interface is defined else 'ens192') %}
 {%- set vm_gateway_interface = vmData.gateway.interface if vmData.gateway is defined and vmData.gateway.interface is defined else default_gateway_interface %}
 {%- set host_gateway_interface = node_overrides.gateway.interface if node_overrides.gateway is defined and node_overrides.gateway.interface is defined else vm_gateway_interface %}
 - hostname: {{ hostname }}
