@@ -13,8 +13,12 @@ all:
     networkType: OVNKubernetes
     machineNetwork:
       cidr: 10.11.0.0/24
-      gateway: 10.11.0.1
-      nameserver: 10.11.0.1
+      gateway:
+        address: 10.11.0.1
+      dns-resolver:
+        config:
+          server:
+          - 10.11.0.1
       firstIP: 10.11.0.103
       firstMAC: 00:50:56:0b:00:67
 

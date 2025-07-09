@@ -1,0 +1,25 @@
+---
+- name: Build network configuration for each node
+  command: "python3 {{ playbook_dir }}/../playbooks/library/network_config.py"
+  register: network_config_result
+  loop: "{{ network_nodes }}"
+  loop_control:
+    loop_var: item
+    label: "{{ item.hostname }}"
+  environment:
+    NODE_DATA: "{{ item.node_data | to_json }}"
+    MACHINE_NETWORK: "{{ machineNetwork | to_json }}"
+    NODE_OVERRIDES: "{{ item.node_overrides | default({}) | to_json }}"
+
+- name: Debug network config results
+  debug:
+    var: network_config_result
+
+- name: Set network config for each node
+  set_fact:
+    network_configs: "{{ network_configs | default({}) | combine({item.item.hostname: item.stdout | from_json}) }}"
+  loop: "{{ network_config_result.results }}"
+  loop_control:
+    loop_var: item
+    label: "{{ item.item.hostname }}"
+  when: item.stdout is defined and item.stdout | length > 0 

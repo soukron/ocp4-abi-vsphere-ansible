@@ -41,6 +41,37 @@
     ansible.builtin.set_fact:
       use_dhcp: "{{ machineNetwork.firstIP is not defined }}"
 
+  - name: Prepare network nodes data
+    ansible.builtin.set_fact:
+      network_nodes: "{{ network_nodes | default([]) + [{
+        'hostname': 'node%02d.%s.%s' | format(i, name, baseDomain),
+        'node_data': {
+          'networks': node_macs[i|string],
+          'ip': node_ips[i|string] if node_ips is defined and i|string in node_ips else None,
+          'prefix_length': machineNetwork.cidr.split('/')[1],
+          'use_dhcp': use_dhcp,
+          'bond_interfaces': (i|int >= controlPlaneReplicas|int) | ternary(
+            compute_networks | selectattr('type', 'equalto', 'bond') | list,
+            []
+          )
+        },
+        'node_overrides': templateOverrides.vms['node%02d.%s.%s' | format(i, name, baseDomain)] if templateOverrides.vms is defined and 'node%02d.%s.%s' | format(i, name, baseDomain) in templateOverrides.vms else {}
+      }] }}"
+    loop: "{{ range(0, controlPlaneReplicas + computeReplicas) | list }}"
+    loop_control:
+      loop_var: i
+
+  - name: Build network configuration for each node
+    ansible.builtin.include_tasks: tasks/build-network-config.yaml
+
+  - name: Debug network configuration variables
+    ansible.builtin.debug:
+      var: "{{ item }}"
+    loop:
+      - node_macs
+      - node_ips
+      - network_configs
+
   - name: Generate ABI input files
     ansible.builtin.template:
       src: "../templates/{{ item }}.j2"
@@ -48,6 +79,7 @@
     vars:
       node_macs: "{{ node_macs }}"
       node_ips: "{{ node_ips }}"
+      network_configs: "{{ network_configs | default({}) }}"
     with_items:
     - install-config.yaml
     - agent-config.yaml
