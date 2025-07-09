@@ -99,12 +99,12 @@ hosts:
       ipv6:
         enabled: false
 {% endfor %}
-{% if not (use_dhcp is defined and use_dhcp) or node_overrides.dns is defined or node_overrides.gateway is defined %}
+{% if not (use_dhcp is defined and use_dhcp) or node_overrides['dns-resolver'] is defined or node_overrides.gateway is defined %}
     dns-resolver:
       config:
         server:
-{% if node_overrides.dns is defined and node_overrides.dns.servers is defined %}
-{% for dns_server in node_overrides.dns.servers %}
+{% if node_overrides['dns-resolver'] is defined and node_overrides['dns-resolver'].config is defined and node_overrides['dns-resolver'].config.server is defined %}
+{% for dns_server in node_overrides['dns-resolver'].config.server %}
         - {{ dns_server }}
 {% endfor %}
 {% else %}
