@@ -193,6 +193,13 @@ def build_network_config(node_data, machine_network, node_overrides=None):
                 )
             else:
                 network_config['dns-resolver'] = node_overrides['dns-resolver']
+        elif 'nameserver' in node_overrides:
+            # Manejar el caso simple donde nameserver es una string en overrides
+            nameserver = node_overrides['nameserver']
+            if isinstance(nameserver, str):
+                network_config['dns-resolver']['config']['server'] = [nameserver]
+            elif isinstance(nameserver, list):
+                network_config['dns-resolver']['config']['server'] = nameserver
         
         if 'gateway' in node_overrides:
             if 'routes' in network_config and network_config['routes']['config']:
