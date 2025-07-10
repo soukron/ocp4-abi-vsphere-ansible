@@ -49,10 +49,8 @@ hosts:
 {% endfor %}
 {% endif %}
       ipv4:
-{% if interface.ipv4.enabled is defined %}
-        enabled: {{ interface.ipv4.enabled }}
-{% endif %}
 {% if interface.ipv4.address is defined %}
+        enabled: true
         dhcp: false
         address:
 {% if interface.ipv4.address is string %}
@@ -65,7 +63,13 @@ hosts:
 {% endfor %}
 {% endif %}
 {% else %}
+{% if interface.name not in (network_config.interfaces | selectattr('link-aggregation', 'defined') | map(attribute='link-aggregation') | map(attribute='port') | flatten) %}
+        enabled: true
         dhcp: true
+{% else %}
+        enabled: false
+        dhcp: false
+{% endif %}
 {% endif %}
       ipv6:
         enabled: false
