@@ -204,22 +204,38 @@ def build_network_config(node_data, machine_network, node_overrides=None):
         if 'gateway' in node_overrides:
             if 'routes' in network_config and network_config['routes']['config']:
                 override_gateway = node_overrides['gateway']
-                # Usar la interfaz calculada dinámicamente como fallback
-                override_interface = override_gateway.get('interface', gateway_interface)
+                # Manejar tanto string como objeto
+                if isinstance(override_gateway, str):
+                    # Caso simple: gateway es una string
+                    override_address = override_gateway
+                    override_interface = gateway_interface
+                else:
+                    # Caso complejo: gateway es un objeto
+                    override_address = override_gateway.get('address', gateway_address)
+                    override_interface = override_gateway.get('interface', gateway_interface)
+                
                 network_config['routes']['config'][0].update({
-                    'next-hop-address': override_gateway.get('address', gateway_address),
+                    'next-hop-address': override_address,
                     'next-hop-interface': override_interface
                 })
     # Si hay override de gateway y no existe ninguna ruta, crearla con el override
     if 'gateway' in node_overrides and ('routes' not in network_config or not network_config['routes'].get('config')):
         override_gateway = node_overrides['gateway']
         network_config.setdefault('routes', {'config': []})
-        # Usar la interfaz calculada dinámicamente como fallback
-        override_interface = override_gateway.get('interface', gateway_interface)
-        if override_gateway.get('address') and override_interface:
+        # Manejar tanto string como objeto
+        if isinstance(override_gateway, str):
+            # Caso simple: gateway es una string
+            override_address = override_gateway
+            override_interface = gateway_interface
+        else:
+            # Caso complejo: gateway es un objeto
+            override_address = override_gateway.get('address')
+            override_interface = override_gateway.get('interface', gateway_interface)
+        
+        if override_address and override_interface:
             network_config['routes']['config'].append({
                 'destination': '0.0.0.0/0',
-                'next-hop-address': override_gateway['address'],
+                'next-hop-address': override_address,
                 'next-hop-interface': override_interface
             })
         if not network_config['routes']['config']:
