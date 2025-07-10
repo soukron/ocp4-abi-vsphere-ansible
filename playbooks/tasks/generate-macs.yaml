@@ -6,7 +6,7 @@
 
 - name: Generate base node networks
   ansible.builtin.set_fact:
-    base_node_networks: "{{ base_node_networks | default([]) + [ { 'node_index': item, 'networks': (item|int < controlPlaneReplicas) | ternary(control_plane_networks, compute_networks) } ] }}"
+    base_node_networks: "{{ base_node_networks | default([]) + [ { 'node_index': item, 'networks': (item|int < controlPlaneReplicas) | ternary(control_plane_networks, compute_networks | default([])) } ] }}"
   with_sequence: start=0 end="{{ controlPlaneReplicas + computeReplicas - 1 }}"
 
 - name: Merge additional_networks into node_networks

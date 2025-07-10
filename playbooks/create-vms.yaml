@@ -5,7 +5,7 @@
   vars:
     state: poweredon
     control_plane_networks: "{{ vms.controlPlaneData.networks }}"
-    compute_networks: "{{ vms.computeData.networks }}"
+    compute_networks: "{{ vms.computeData.networks if computeReplicas > 0 and vms.computeData is defined else [] }}"
 
   tasks:
     - name: Generate MAC addresses if not already generated
@@ -17,7 +17,7 @@
         all_vm_networks: "{{ all_vm_networks | default([]) + [vm_networks] }}"
         all_vm_disks: "{{ all_vm_disks | default([]) + [vm_disks] }}"
       vars:
-        vmData: "{{ vms.controlPlaneData if vm_index < controlPlaneReplicas | int else vms.computeData }}"
+        vmData: "{{ vms.controlPlaneData if vm_index < controlPlaneReplicas | int else (vms.computeData if computeReplicas > 0 and vms.computeData is defined else vms.controlPlaneData) }}"
         vm_networks: >-
           [
           {% for interface_name, interface_data in node_macs[vm_index|string].items() %}
@@ -72,4 +72,4 @@
       loop_control:
         loop_var: vm_index
       vars:
-        vmData: "{{ vms.controlPlaneData if vm_index < controlPlaneReplicas | int else vms.computeData }}"
+        vmData: "{{ vms.controlPlaneData if vm_index < controlPlaneReplicas | int else (vms.computeData if computeReplicas > 0 and vms.computeData is defined else vms.controlPlaneData) }}"

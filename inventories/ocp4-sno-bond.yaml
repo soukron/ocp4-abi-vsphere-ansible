@@ -7,8 +7,8 @@ all:
     name: ocp4
     baseDomain: gmbros.local
 
-    controlPlaneReplicas: 3
-    computeReplicas: 2
+    controlPlaneReplicas: 1
+    computeReplicas: 0
 
     networkType: OVNKubernetes
     machineNetwork:
@@ -19,10 +19,11 @@ all:
         config:
           server:
           - 10.11.0.1
-      firstIP: 10.11.0.103
+      firstIP: 10.11.0.243
+      firstMAC: 00:50:56:0b:00:f3
 
-    ingressVIP: 10.11.0.100
-    apiVIP: 10.11.0.101
+    ingressVIP: 10.11.0.241
+    apiVIP: 10.11.0.242
 
     pullSecret: fromVault
     sshKey: fromVault
@@ -35,17 +36,8 @@ all:
 
     vms:
       controlPlaneData:
-        cpu: 4
+        cpu: 8
         memory: 16384
-        disk:
-        - 100
-        networks:
-        - name: ens192
-          network: VM Routed Network
-        datastore: esx1-datastore
-      computeData:
-        cpu: 4
-        memory: 8192
         disk:
         - 100
         networks:

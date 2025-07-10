@@ -13,8 +13,12 @@ all:
     networkType: OVNKubernetes
     machineNetwork:
       cidr: 10.11.0.0/24
-      gateway: 10.11.0.1
-      nameserver: 10.11.0.1
+      gateway:
+        address: 10.11.0.1
+      dns-resolver:
+        config:
+          server:
+          - 10.11.0.1
       firstIP: 10.11.0.103
       firstMAC: 00:50:56:0b:00:67
 
@@ -34,15 +38,6 @@ all:
       controlPlaneData:
         cpu: 8
         memory: 16384
-        disk:
-        - 100
-        networks:
-        - name: ens192
-          network: VM Routed Network
-        datastore: esx1-datastore
-      computeData:
-        cpu: 4
-        memory: 8192
         disk:
         - 100
         networks:

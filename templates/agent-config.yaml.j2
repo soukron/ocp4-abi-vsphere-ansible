@@ -53,6 +53,7 @@ hosts:
         enabled: {{ interface.ipv4.enabled }}
 {% endif %}
 {% if interface.ipv4.address is defined %}
+        dhcp: false
         address:
 {% if interface.ipv4.address is string %}
         - ip: {{ interface.ipv4.address }}
@@ -63,9 +64,8 @@ hosts:
           prefix-length: {{ addr['prefix-length'] | default(prefix) }}
 {% endfor %}
 {% endif %}
-{% endif %}
-{% if interface.ipv4.dhcp is defined %}
-        dhcp: {{ interface.ipv4.dhcp }}
+{% else %}
+        dhcp: true
 {% endif %}
       ipv6:
         enabled: false

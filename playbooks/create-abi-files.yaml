@@ -4,7 +4,7 @@
   gather_facts: false
   vars:
     control_plane_networks: "{{ vms.controlPlaneData.networks }}"
-    compute_networks: "{{ vms.computeData.networks }}"
+    compute_networks: "{{ vms.computeData.networks if computeReplicas > 0 and vms.computeData is defined else [] }}"
 
   tasks:
   - name: Store clusterDir in a fact
@@ -51,8 +51,8 @@
           'prefix_length': machineNetwork.cidr.split('/')[1],
           'use_dhcp': use_dhcp,
           'bond_interfaces': (i|int >= controlPlaneReplicas|int) | ternary(
-            compute_networks | selectattr('type', 'equalto', 'bond') | list,
-            []
+            compute_networks | selectattr('type', 'defined') | selectattr('type', 'equalto', 'bond') | list if computeReplicas > 0 and compute_networks is defined else [],
+            control_plane_networks | selectattr('type', 'defined') | selectattr('type', 'equalto', 'bond') | list
           )
         },
         'node_overrides': templateOverrides.vms['node%02d.%s.%s' | format(i, name, baseDomain)] if templateOverrides.vms is defined and 'node%02d.%s.%s' | format(i, name, baseDomain) in templateOverrides.vms else {}
