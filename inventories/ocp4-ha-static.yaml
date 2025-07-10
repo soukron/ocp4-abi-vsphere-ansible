@@ -24,15 +24,6 @@ all:
     ingressVIP: 10.11.0.100
     apiVIP: 10.11.0.101
 
-    pullSecret: fromVault
-    sshKey: fromVault
-
-    vcenter:
-      hostname: fromVault
-      username: fromVault
-      password: fromVault
-      datacenter: fromVault
-
     vms:
       controlPlaneData:
         cpu: 4
