@@ -38,7 +38,7 @@ all:
           network: VM Routed Network
         datastore: esx1-datastore
 
-    # Set static network settings for rendezvous node
+    # Required static IP for rendezvous node
     templateOverrides:
       vms:
         node00.ocp4.gmbros.local:
