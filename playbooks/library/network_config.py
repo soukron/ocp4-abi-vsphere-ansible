@@ -130,13 +130,20 @@ def build_network_config(node_data, machine_network, node_overrides=None):
         
         network_config['interfaces'].append(bond_config)
     
-    # Configurar DNS
+    # Configurar DNS (nameserver o dns-resolver format)
     if not node_data.get('use_dhcp') or 'dns-resolver' in node_overrides:
         if 'dns-resolver' in machine_network:
             network_config['dns-resolver'] = merge_dicts(
                 network_config['dns-resolver'], 
                 machine_network['dns-resolver']
             )
+        elif 'nameserver' in machine_network:
+            # Manejar el caso simple donde nameserver es una string
+            nameserver = machine_network['nameserver']
+            if isinstance(nameserver, str):
+                network_config['dns-resolver']['config']['server'] = [nameserver]
+            elif isinstance(nameserver, list):
+                network_config['dns-resolver']['config']['server'] = nameserver
     else:
         network_config.pop('dns-resolver', None)
     
