@@ -157,10 +157,14 @@ def build_network_config(node_data, machine_network, node_overrides=None):
     # Verificar si hay una interfaz bond0 en las interfaces del nodo
     has_bond0 = any(bond['name'] == 'bond0' for bond in bond_interfaces)
     
-    if has_bond0:
-        gateway_interface = 'bond0'
-    elif isinstance(gateway, dict) and gateway.get('interface'):
+    # Lógica de priorización para la interfaz del gateway:
+    # 1. Si está definida networkconfig.gateway.interface o overrides.gateway.interface -> lo que se indique
+    # 2. Si hay bond0 y ens192 es parte de él -> bond0
+    # 3. En cualquier otro caso, ens192
+    if isinstance(gateway, dict) and gateway.get('interface'):
         gateway_interface = gateway.get('interface')
+    elif has_bond0 and 'ens192' in bond_ports:
+        gateway_interface = 'bond0'
     else:
         gateway_interface = 'ens192'
     
