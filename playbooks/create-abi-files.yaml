@@ -61,6 +61,10 @@
     loop_control:
       loop_var: i
 
+  - name: Initialize network_configs as empty dict
+    ansible.builtin.set_fact:
+      network_configs: {}
+
   - name: Build network configuration for each node
     ansible.builtin.include_tasks: tasks/build-network-config.yaml
 

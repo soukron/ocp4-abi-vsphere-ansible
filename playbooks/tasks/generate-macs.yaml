@@ -42,21 +42,11 @@
     node_overrides: "{{ templateOverrides.vms[hostname] if templateOverrides.vms is defined and hostname in templateOverrides.vms else {} }}"
     interface_overrides: "{{ node_overrides.interfaces | selectattr('name', 'equalto', interface.name) | list | first if node_overrides.interfaces is defined else {} }}"
     network_name: "{{ (interface_overrides.network | default(interface.network)) }}"
-    is_first_interface: "{{ interface.name == 'ens192' }}"
     mac_address: >-
       {% if interface_overrides['mac-address'] is defined %}
       {{ interface_overrides['mac-address'] }}
-      {% elif machineNetwork.firstMAC is defined %}
-        {% set base_mac = machineNetwork.firstMAC %}
-        {% set mac_parts = base_mac.split(':') %}
-        {% if is_first_interface %}
-          {% set last_byte = ((mac_parts[5] | int(16)) + (node_index | int)) % 256 %}
-          {{ mac_parts[0:5] | join(':') + ':' + ('%02x' | format(last_byte | int)) }}
-        {% else %}
-          {{ '00:50:56:' + ('%02x' | format(range(0, 64) | random)) + ':' + ('%02x' | format(range(0, 255) | random)) + ':' + ('%02x' | format(range(0, 255) | random)) }}
-        {% endif %}
       {% else %}
-        {{ '00:50:56:' + ('%02x' | format(range(0, 64) | random)) + ':' + ('%02x' | format(range(0, 255) | random)) + ':' + ('%02x' | format(range(0, 255) | random)) }}
+      {{ '00:50:56:' + ('%02x' | format(range(0, 64) | random)) + ':' + ('%02x' | format(range(0, 255) | random)) + ':' + ('%02x' | format(range(0, 255) | random)) }}
       {% endif %}
   with_subelements:
     - "{{ expanded_networks }}"

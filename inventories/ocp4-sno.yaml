@@ -20,7 +20,6 @@ all:
           server:
           - 10.11.0.1
       firstIP: 10.11.0.243
-      firstMAC: 00:50:56:0b:00:f3
 
     ingressVIP: 10.11.0.241
     apiVIP: 10.11.0.242
