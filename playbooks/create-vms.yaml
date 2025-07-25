@@ -13,7 +13,7 @@
       when: node_macs is not defined
 
     - name: Generate network and disk configurations for all nodes
-      set_fact:
+      ansible.builtin.set_fact:
         all_vm_networks: "{{ all_vm_networks | default([]) + [vm_networks] }}"
         all_vm_disks: "{{ all_vm_disks | default([]) + [vm_disks] }}"
       vars:
