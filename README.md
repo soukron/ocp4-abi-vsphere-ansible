@@ -147,6 +147,8 @@ A few examples have been created in the See the  [`inventories/`](inventories/) 
 There are a few things yet to be done for future updates:
 - Include version parameter in the cluster definition
 - Include openshift-install binary download if not present
+- Include a custom CA to the installation
+- Allow referencing a file for the SSH key instead of a variable
 
 Feel free to collaborate! ❤️
 
