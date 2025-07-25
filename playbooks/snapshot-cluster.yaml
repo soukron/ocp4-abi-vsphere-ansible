@@ -19,7 +19,7 @@
       datacenter: "{{ vcenter.datacenter }}"
       validate_certs: no
       name: "node{{ '%02d'|format(loop) }}.{{ name }}.{{ baseDomain }}"
-      folder: "/{{ vcenter.datacenter }}/vm/"
+      folder: "/{{ vcenter.datacenter }}/vm/{{ name }}.{{ baseDomain }}/"
       state: present
       snapshot_name: "{{ snapshot_name | default('snapshot') }}"
       quiesce: "{{ quiesce|  default('false') }}"
@@ -37,7 +37,7 @@
       datacenter: "{{ vcenter.datacenter }}"
       validate_certs: no
       name: "node{{ '%02d'|format(loop) }}.{{ name }}.{{ baseDomain }}"
-      folder: "/{{ vcenter.datacenter }}/vm/"
+      folder: "/{{ vcenter.datacenter }}/vm/{{ name }}.{{ baseDomain }}/"
       state: remove_all
     loop: "{{ range(controlPlaneReplicas|int + computeReplicas|int) }}"
     loop_control:
@@ -55,7 +55,7 @@
         datacenter: "{{ vcenter.datacenter }}"
         validate_certs: no
         name: "node{{ '%02d'|format(loop) }}.{{ name }}.{{ baseDomain }}"
-        folder: "/{{ vcenter.datacenter }}/vm/"
+        folder: "/{{ vcenter.datacenter }}/vm/{{ name }}.{{ baseDomain }}/"
         state: revert
         snapshot_name: "{{ snapshot_name | default('snap1') }}"
       loop: "{{ range(controlPlaneReplicas|int + computeReplicas|int) }}"

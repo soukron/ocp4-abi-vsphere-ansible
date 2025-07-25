@@ -36,6 +36,18 @@
     loop_control:
       loop_var: loop
 
+  - name: Remove cluster folder from vCenter
+    community.vmware.vcenter_folder:
+      hostname: "{{ vcenter.hostname }}"
+      username: "{{ vcenter.username }}"
+      password: "{{ vcenter.password }}"
+      datacenter: "{{ vcenter.datacenter }}"
+      validate_certs: no
+      folder_name: "{{ name }}.{{ baseDomain }}"
+      folder_type: vm
+      state: absent
+    ignore_errors: true
+    
   - name: Delete ISO image from datastore
     community.vmware.vsphere_file:
       hostname: '{{ vcenter.hostname }}'
@@ -50,4 +62,6 @@
 
   - name: Remove cluster directory
     ansible.builtin.shell: "rm -vfr {{ clusterDir }}"
+
+
 

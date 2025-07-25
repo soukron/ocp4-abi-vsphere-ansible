@@ -8,6 +8,18 @@
     compute_networks: "{{ vms.computeData.networks if computeReplicas > 0 and vms.computeData is defined else [] }}"
 
   tasks:
+    - name: Create cluster folder in vCenter
+      community.vmware.vcenter_folder:
+        hostname: "{{ vcenter.hostname }}"
+        username: "{{ vcenter.username }}"
+        password: "{{ vcenter.password }}"
+        datacenter: "{{ vcenter.datacenter }}"
+        validate_certs: no
+        folder_name: "{{ name }}.{{ baseDomain }}"
+        folder_type: vm
+        state: present
+      ignore_errors: true
+
     - name: Generate MAC addresses if not already generated
       ansible.builtin.include_tasks: tasks/generate-macs.yaml
       when: node_macs is not defined
@@ -49,7 +61,7 @@
         password: "{{ vcenter.password }}"
         datacenter: "{{ vcenter.datacenter }}"
         validate_certs: no
-        folder: "/{{ vcenter.datacenter }}/vm/"
+        folder: "/{{ vcenter.datacenter }}/vm/{{ name }}.{{ baseDomain }}/"
         guest_id: "rhel9_64Guest"
         name: "node{{ '%02d' | format(vm_index) }}.{{ name }}.{{ baseDomain }}"
         state: "{{ state }}"
