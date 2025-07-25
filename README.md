@@ -9,6 +9,12 @@ Requirements:
 - DNS for API/Ingress
 - OpenShift Installer in the $PATH
 
+Dependencies:
+```bash
+pip install -r requirements.txt
+ansible-galaxy collection install -r collections/requirements.yml
+```
+
 Usage:
 - Create inventory file for each cluster
 - Create and encrypt the vault file using the template
@@ -19,5 +25,4 @@ $ ansible-playbook -i inventories/sno.yaml -e @inventories/vault.yaml --ask-vaul
 
 TODO:
 - Add the cluster version in the inventory and download the installer
-- Add requirements.txt for Ansible dependencies
 

@@ -1,0 +1,6 @@
+---
+collections:
+  # VMware Community Collection - Required for vSphere operations
+  - name: community.vmware
+    version: ">=3.0.0"
+    source: https://galaxy.ansible.com

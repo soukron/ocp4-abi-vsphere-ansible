@@ -1,0 +1,5 @@
+# VMware SDK for Python - Required for VMware operations
+pyvmomi>=8.0.0
+
+# HTTP requests library - Required for VMware API communication
+requests>=2.25.0
