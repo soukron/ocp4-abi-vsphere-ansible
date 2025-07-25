@@ -1,0 +1,16 @@
+---
+apiVersion: operator.openshift.io/v1
+kind: Network
+metadata:
+  name: default
+spec:
+  serviceNetwork:
+    - 172.30.0.0/16
+  clusterNetwork:
+    - cidr: 10.128.0.0/14
+      hostPrefix: 23
+  defaultNetwork:
+    type: OpenShiftSDN
+    openshiftSDNConfig:
+      mode: NetworkPolicy
+      mtu: 1450

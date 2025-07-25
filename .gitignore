@@ -1,5 +1,7 @@
 clusters/
 inventories/*
+!inventories/extra_manifests
+!inventories/extra_manifests/*
 !inventories/ocp4-*.yaml
 !inventories/vault-sample.yaml
 **/__pycache__/

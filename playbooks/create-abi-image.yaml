@@ -12,6 +12,13 @@
   - name: Store clusterDir in a fact
     ansible.builtin.set_fact: clusterDir="{{ readlink.stdout }}"
 
+  - name: Include extra-manifests in the installation directory
+    ansible.builtin.copy:
+      src: "../inventories/extra_manifests/{{ item }}"
+      dest: "{{ clusterDir }}/openshift/"
+    loop: "{{ extra_manifests }}"
+    when: extra_manifests is defined
+
   - name: Run openshift-install to generate the ISO file
     ansible.builtin.shell: "openshift-install --dir {{ clusterDir }} agent create image"
 
