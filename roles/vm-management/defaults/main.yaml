@@ -1,0 +1,15 @@
+---
+# Default variables for vm-management role
+
+# VM state for creation
+vm_state: poweredon
+
+# Snapshot defaults
+snapshot_name: snapshot
+quiesce: false
+
+# Whether to remove cluster files when destroying
+remove_cluster_files: true
+
+# Base directory for cluster files
+clusterBaseDir: "../clusters"

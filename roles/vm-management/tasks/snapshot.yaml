@@ -1,0 +1,90 @@
+---
+- name: Fail if no snapshot action is defined
+  ansible.builtin.fail: 
+    msg: "Aborting, 'snapshot_action' must be defined (create, remove_all, revert)"
+  when: snapshot_action is undefined
+
+- name: Store clusterDir in a fact
+  ansible.builtin.set_fact: 
+    clusterDir: "{{ clusterBaseDir | default('../clusters') }}/{{ name }}.{{ baseDomain }}"
+
+- name: Create snapshot
+  community.vmware.vmware_guest_snapshot:
+    hostname: "{{ vcenter.hostname }}"
+    username: "{{ vcenter.username }}"
+    password: "{{ vcenter.password }}"
+    datacenter: "{{ vcenter.datacenter }}"
+    validate_certs: no
+    name: "node{{ '%02d' | format(loop) }}.{{ name }}.{{ baseDomain }}"
+    folder: "/{{ vcenter.datacenter }}/vm/{{ name }}.{{ baseDomain }}/"
+    state: present
+    snapshot_name: "{{ snapshot_name | default('snapshot') }}"
+    quiesce: "{{ quiesce | default('false') }}"
+  loop: "{{ range(controlPlaneReplicas | int + computeReplicas | int) }}"
+  loop_control:
+    loop_var: loop
+  ignore_errors: true
+  when: snapshot_action == 'create'
+
+- name: Remove all snapshots
+  community.vmware.vmware_guest_snapshot:
+    hostname: "{{ vcenter.hostname }}"
+    username: "{{ vcenter.username }}"
+    password: "{{ vcenter.password }}"
+    datacenter: "{{ vcenter.datacenter }}"
+    validate_certs: no
+    name: "node{{ '%02d' | format(loop) }}.{{ name }}.{{ baseDomain }}"
+    folder: "/{{ vcenter.datacenter }}/vm/{{ name }}.{{ baseDomain }}/"
+    state: remove_all
+  loop: "{{ range(controlPlaneReplicas | int + computeReplicas | int) }}"
+  loop_control:
+    loop_var: loop
+  ignore_errors: true
+  when: snapshot_action == 'remove_all'
+
+- name: Revert to a given snapshot
+  block:
+    - name: Revert snapshot
+      community.vmware.vmware_guest_snapshot:
+        hostname: "{{ vcenter.hostname }}"
+        username: "{{ vcenter.username }}"
+        password: "{{ vcenter.password }}"
+        datacenter: "{{ vcenter.datacenter }}"
+        validate_certs: no
+        name: "node{{ '%02d' | format(loop) }}.{{ name }}.{{ baseDomain }}"
+        folder: "/{{ vcenter.datacenter }}/vm/{{ name }}.{{ baseDomain }}/"
+        state: revert
+        snapshot_name: "{{ snapshot_name | default('snap1') }}"
+      loop: "{{ range(controlPlaneReplicas | int + computeReplicas | int) }}"
+      loop_control:
+        loop_var: loop
+   
+    - name: Power off virtual machines (forced shutdown)
+      community.vmware.vmware_guest:
+        hostname: "{{ vcenter.hostname }}"
+        username: "{{ vcenter.username }}"
+        password: "{{ vcenter.password }}"
+        datacenter: "{{ vcenter.datacenter }}"
+        validate_certs: no
+        name: "node{{ '%02d' | format(loop) }}.{{ name }}.{{ baseDomain }}"
+        state: poweredoff
+        force: yes
+      loop: "{{ range(controlPlaneReplicas | int + computeReplicas | int) }}"
+      loop_control:
+        loop_var: loop
+
+    - name: Power on virtual machines
+      community.vmware.vmware_guest:
+        hostname: "{{ vcenter.hostname }}"
+        username: "{{ vcenter.username }}"
+        password: "{{ vcenter.password }}"
+        datacenter: "{{ vcenter.datacenter }}"
+        validate_certs: no
+        name: "node{{ '%02d' | format(loop) }}.{{ name }}.{{ baseDomain }}"
+        state: poweredon
+      loop: "{{ range(controlPlaneReplicas | int + computeReplicas | int) }}"
+      loop_control:
+        loop_var: loop
+
+  ignore_errors: true
+  when: snapshot_action == 'revert'

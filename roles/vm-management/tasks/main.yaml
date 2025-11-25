@@ -1,0 +1,9 @@
+---
+- name: VM Management main tasks
+  ansible.builtin.include_tasks: "{{ vm_action }}.yaml"
+  when: vm_action is defined
+
+- name: Fail if no action specified
+  ansible.builtin.fail:
+    msg: "vm_action must be defined (create, destroy, snapshot)"
+  when: vm_action is not defined

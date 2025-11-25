@@ -5,61 +5,15 @@
 
   tasks:
   - name: Store clusterDir in a fact
-    ansible.builtin.set_fact: clusterDir="{{ clusterBaseDir|default('../clusters') }}/{{ name }}.{{ baseDomain }}"
+    ansible.builtin.set_fact: 
+      clusterDir: "{{ clusterBaseDir | default('../clusters') }}/{{ name }}.{{ baseDomain }}"
 
-  - name: Power off virtual machines
-    community.vmware.vmware_guest:
-      hostname: "{{ vcenter.hostname }}"
-      username: "{{ vcenter.username }}"
-      password: "{{ vcenter.password }}"
-      datacenter: "{{ vcenter.datacenter }}"
-      validate_certs: no
-      name: "node{{ '%02d'|format(loop) }}.{{ name }}.{{ baseDomain }}"
-      state: poweredoff
-    loop: "{{ range(controlPlaneReplicas|int + computeReplicas|int ) }}"
-    loop_control:
-      loop_var: loop
-    ignore_errors: true
+  roles:
+  - role: vm-management
+    vars:
+      vm_action: destroy
 
-  - name: Remove virtual machine from disk and inventory 
-    community.vmware.vmware_guest:
-      hostname: "{{ vcenter.hostname }}"
-      username: "{{ vcenter.username }}"
-      password: "{{ vcenter.password }}"
-      datacenter: "{{ vcenter.datacenter }}"
-      validate_certs: no
-      name: "node{{ '%02d'|format(loop) }}.{{ name }}.{{ baseDomain }}"
-      state: absent
-      delete_from_inventory: true
-      force: true
-    loop: "{{ range(controlPlaneReplicas|int + computeReplicas|int ) }}"
-    loop_control:
-      loop_var: loop
-
-  - name: Remove cluster folder from vCenter
-    community.vmware.vcenter_folder:
-      hostname: "{{ vcenter.hostname }}"
-      username: "{{ vcenter.username }}"
-      password: "{{ vcenter.password }}"
-      datacenter: "{{ vcenter.datacenter }}"
-      validate_certs: no
-      folder_name: "{{ name }}.{{ baseDomain }}"
-      folder_type: vm
-      state: absent
-    ignore_errors: true
-    
-  - name: Delete ISO image from datastore
-    community.vmware.vsphere_file:
-      hostname: '{{ vcenter.hostname }}'
-      username: '{{ vcenter.username }}'
-      password: '{{ vcenter.password }}'
-      validate_certs: no
-      datacenter: "{{ vcenter.datacenter }}"
-      datastore: "{{ item }}"
-      path: "iso/{{ name }}-agent.x86_64.iso"
-      state: absent
-    with_items: "{{ vms | dict2items | selectattr('value.datastore', 'defined') | map(attribute='value.datastore') | list | unique }}"
-
+  tasks:
   - name: Remove cluster directory
     ansible.builtin.shell: "rm -vfr {{ clusterDir }}"
 
