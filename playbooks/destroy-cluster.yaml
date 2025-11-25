@@ -3,11 +3,6 @@
   hosts: localhost
   gather_facts: false
 
-  tasks:
-  - name: Store clusterDir in a fact
-    ansible.builtin.set_fact: 
-      clusterDir: "{{ clusterBaseDir | default('../clusters') }}/{{ name }}.{{ baseDomain }}"
-
   roles:
   - role: vm-management
     vars:

@@ -26,7 +26,6 @@
     validate_certs: no
     name: "node{{ '%02d' | format(loop) }}.{{ name }}.{{ baseDomain }}"
     state: absent
-    delete_from_inventory: true
     force: true
   loop: "{{ range(controlPlaneReplicas | int + computeReplicas | int ) }}"
   loop_control:
