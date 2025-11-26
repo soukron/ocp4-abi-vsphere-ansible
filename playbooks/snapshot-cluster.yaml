@@ -7,4 +7,5 @@
   - role: vm-management
     vars:
       vm_action: snapshot
-      snapshot_action: "{{ action }}"
+      snapshot_action: "{{ snapshot_action }}"
+      snapshot_name: "{{ snapshot_name }}"

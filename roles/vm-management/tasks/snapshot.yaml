@@ -40,7 +40,7 @@
   loop_control:
     loop_var: loop
   ignore_errors: true
-  when: snapshot_action == 'remove_all'
+  when: snapshot_action == 'remove_all' or snapshot_action == 'remove'
 
 - name: Revert to a given snapshot
   block:
