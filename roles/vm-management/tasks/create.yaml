@@ -20,6 +20,8 @@
     all_vm_networks: "{{ all_vm_networks | default([]) + [vm_networks] }}"
     all_vm_disks: "{{ all_vm_disks | default([]) + [vm_disks] }}"
   vars:
+    hostname: "{{ 'node%02d.%s.%s' | format(vm_index|int, name, baseDomain) }}"
+    node_overrides: "{{ templateOverrides.vms[hostname] if templateOverrides.vms is defined and hostname in templateOverrides.vms else {} }}"
     vmData: "{{ vms.controlPlaneData if vm_index < controlPlaneReplicas | int else (vms.computeData if computeReplicas > 0 and vms.computeData is defined else vms.controlPlaneData) }}"
     vm_networks: >-
       [
@@ -51,6 +53,7 @@
     username: "{{ vcenter.username }}"
     password: "{{ vcenter.password }}"
     datacenter: "{{ vcenter.datacenter }}"
+    cluster: "{{ node_overrides.cluster | default(vmData.cluster | default(vcenter.cluster | default(omit))) }}"
     validate_certs: no
     folder: "/{{ vcenter.datacenter }}/vm/{{ name }}.{{ baseDomain }}/"
     guest_id: "rhel9_64Guest"
@@ -75,4 +78,6 @@
   loop_control:
     loop_var: vm_index
   vars:
+    hostname: "{{ 'node%02d.%s.%s' | format(vm_index|int, name, baseDomain) }}"
+    node_overrides: "{{ templateOverrides.vms[hostname] if templateOverrides.vms is defined and hostname in templateOverrides.vms else {} }}"
     vmData: "{{ vms.controlPlaneData if vm_index < controlPlaneReplicas | int else (vms.computeData if computeReplicas > 0 and vms.computeData is defined else vms.controlPlaneData) }}"

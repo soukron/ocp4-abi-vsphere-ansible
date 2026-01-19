@@ -4,6 +4,7 @@ vcenter:
   username: 'user'
   password: 'password'
   datacenter: 'datacenter'
+  cluster: 'cluster-name'
 pullSecret: '{"auths":{...}}'
 sshKey: |
  ssh-rsa AAAAB3...YQQ6U= user@host.example.local

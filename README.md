@@ -71,6 +71,7 @@ Inventory files define:
 - Network configuration (CIDR, gateway, DNS)
 - VM specifications (CPU, memory, disk, networks)
 - vCenter datastore configuration
+- vCenter cluster selection (can be overridden per VM)
 
 A few examples have been created in the See the  [`inventories/`](inventories/) directory.
 
@@ -98,6 +99,7 @@ Custom network configuration per node using `templateOverrides`:
 templateOverrides:
   vms:
     node00.cluster.local:
+      cluster: zone2
       interfaces:
       - name: ens224
         ipv4:
