@@ -21,8 +21,18 @@
     all_vm_disks: "{{ all_vm_disks | default([]) + [vm_disks] }}"
   vars:
     hostname: "{{ 'node%02d.%s.%s' | format(vm_index|int, name, baseDomain) }}"
-    node_overrides: "{{ templateOverrides.vms[hostname] if templateOverrides.vms is defined and hostname in templateOverrides.vms else {} }}"
-    vmData: "{{ vms.controlPlaneData if vm_index < controlPlaneReplicas | int else (vms.computeData if computeReplicas > 0 and vms.computeData is defined else vms.controlPlaneData) }}"
+    node_shortname: "{{ 'node%02d' | format(vm_index|int) }}"
+    node_overrides: >-
+      {{ templateOverrides.vms[node_shortname]
+         if templateOverrides.vms is defined and node_shortname in templateOverrides.vms
+         else (templateOverrides.vms[hostname]
+               if templateOverrides.vms is defined and hostname in templateOverrides.vms else {}) }}
+    vm_defaults: "{{ vms.defaultConfig | default({}) }}"
+    vm_role_data: "{{ vms.controlPlaneConfig if vm_index < controlPlaneReplicas | int else (vms.computeConfig if computeReplicas > 0 and vms.computeConfig is defined else vms.controlPlaneConfig) }}"
+    vm_cpu: "{{ node_overrides.cpu | default(vm_role_data.cpu | default(vm_defaults.cpu)) }}"
+    vm_memory: "{{ node_overrides.memory | default(vm_role_data.memory | default(vm_defaults.memory)) }}"
+    vm_datastore: "{{ node_overrides.datastore | default(vm_role_data.datastore | default(vm_defaults.datastore)) }}"
+    vm_disk: "{{ node_overrides.disk | default(vm_role_data.disk | default(vm_defaults.disk)) }}"
     vm_networks: >-
       [
       {% for interface_name, interface_data in node_macs[vm_index|string].items() %}
@@ -35,11 +45,11 @@
       ]
     vm_disks: >-
       [
-      {% for disk in vmData.disk %}
+      {% for disk in vm_disk %}
         {
           "size_gb": {{ disk }},
           "type": "thin",
-          "datastore": "{{ vmData.datastore }}"
+          "datastore": "{{ vm_datastore }}"
         }{% if not loop.last %},{% endif %}
       {% endfor %}
       ]
@@ -53,7 +63,7 @@
     username: "{{ vcenter.username }}"
     password: "{{ vcenter.password }}"
     datacenter: "{{ vcenter.datacenter }}"
-    cluster: "{{ node_overrides.cluster | default(vmData.cluster | default(vcenter.cluster | default(omit))) }}"
+    cluster: "{{ node_overrides.cluster | default(vm_role_data.cluster | default(vm_defaults.cluster | default(vcenter.cluster | default(omit)))) }}"
     validate_certs: no
     folder: "/{{ vcenter.datacenter }}/vm/{{ name }}.{{ baseDomain }}/"
     guest_id: "rhel9_64Guest"
@@ -61,8 +71,8 @@
     state: "{{ vm_state | default('poweredon') }}"
     disk: "{{ all_vm_disks[vm_index] }}"
     hardware:
-      memory_mb: "{{ vmData.memory }}"
-      num_cpus: "{{ vmData.cpu }}"
+      memory_mb: "{{ vm_memory }}"
+      num_cpus: "{{ vm_cpu }}"
       scsi: paravirtual
     networks: "{{ all_vm_networks[vm_index] }}"
     cdrom:
@@ -70,7 +80,7 @@
         unit_number: 0
         state: present
         type: iso
-        iso_path: "[{{ vmData.datastore }}] iso/{{ name }}-agent.x86_64.iso"
+        iso_path: "[{{ vm_datastore }}] iso/{{ name }}-agent.x86_64.iso"
     advanced_settings:
       - key: disk.EnableUUID
         value: TRUE
@@ -79,5 +89,15 @@
     loop_var: vm_index
   vars:
     hostname: "{{ 'node%02d.%s.%s' | format(vm_index|int, name, baseDomain) }}"
-    node_overrides: "{{ templateOverrides.vms[hostname] if templateOverrides.vms is defined and hostname in templateOverrides.vms else {} }}"
-    vmData: "{{ vms.controlPlaneData if vm_index < controlPlaneReplicas | int else (vms.computeData if computeReplicas > 0 and vms.computeData is defined else vms.controlPlaneData) }}"
+    node_shortname: "{{ 'node%02d' | format(vm_index|int) }}"
+    node_overrides: >-
+      {{ templateOverrides.vms[node_shortname]
+         if templateOverrides.vms is defined and node_shortname in templateOverrides.vms
+         else (templateOverrides.vms[hostname]
+               if templateOverrides.vms is defined and hostname in templateOverrides.vms else {}) }}
+    vm_defaults: "{{ vms.defaultConfig | default({}) }}"
+    vm_role_data: "{{ vms.controlPlaneConfig if vm_index < controlPlaneReplicas | int else (vms.computeConfig if computeReplicas > 0 and vms.computeConfig is defined else vms.controlPlaneConfig) }}"
+    vm_cpu: "{{ node_overrides.cpu | default(vm_role_data.cpu | default(vm_defaults.cpu)) }}"
+    vm_memory: "{{ node_overrides.memory | default(vm_role_data.memory | default(vm_defaults.memory)) }}"
+    vm_datastore: "{{ node_overrides.datastore | default(vm_role_data.datastore | default(vm_defaults.datastore)) }}"
+    vm_disk: "{{ node_overrides.disk | default(vm_role_data.disk | default(vm_defaults.disk)) }}"

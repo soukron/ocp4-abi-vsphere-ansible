@@ -3,8 +3,8 @@
   hosts: localhost
   gather_facts: false
   vars:
-    control_plane_networks: "{{ vms.controlPlaneData.networks }}"
-    compute_networks: "{{ vms.computeData.networks if computeReplicas > 0 and vms.computeData is defined else [] }}"
+    control_plane_networks: "{{ vms.controlPlaneConfig.networks | default(vms.defaultConfig.networks) }}"
+    compute_networks: "{{ (vms.computeConfig.networks if vms.computeConfig is defined and vms.computeConfig.networks is defined else vms.defaultConfig.networks) if computeReplicas > 0 else [] }}"
 
   tasks:
   - name: Store clusterDir in a fact
@@ -55,7 +55,10 @@
             control_plane_networks | selectattr('type', 'defined') | selectattr('type', 'equalto', 'bond') | list
           )
         },
-        'node_overrides': templateOverrides.vms['node%02d.%s.%s' | format(i, name, baseDomain)] if templateOverrides.vms is defined and 'node%02d.%s.%s' | format(i, name, baseDomain) in templateOverrides.vms else {}
+        'node_overrides': (templateOverrides.vms['node%02d' | format(i|int)]
+          if templateOverrides.vms is defined and 'node%02d' | format(i|int) in templateOverrides.vms
+          else (templateOverrides.vms['node%02d.%s.%s' | format(i|int, name, baseDomain)]
+            if templateOverrides.vms is defined and 'node%02d.%s.%s' | format(i|int, name, baseDomain) in templateOverrides.vms else {}))
       }] }}"
     loop: "{{ range(0, controlPlaneReplicas + computeReplicas) | list }}"
     loop_control:

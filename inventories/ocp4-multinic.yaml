@@ -25,56 +25,48 @@ all:
     apiVIP: 10.11.0.101
 
     vms:
-      controlPlaneData:
+      defaultConfig:
         cpu: 4
+        disk:
+        - 100
+        networks:
+        - name: ens192
+          network: VM Routed Network
+        - name: ens224
+          network: VM Isolated Network
+        datastore: esx1-datastore
+      controlPlaneConfig:
         memory: 16384
-        disk:
-        - 100
-        networks:
-        - name: ens192
-          network: VM Routed Network
-        - name: ens224
-          network: VM Isolated Network
-        datastore: esx1-datastore
-      computeData:
-        cpu: 4
+      computeConfig:
         memory: 8192
-        disk:
-        - 100
-        networks:
-        - name: ens192
-          network: VM Routed Network
-        - name: ens224
-          network: VM Isolated Network
-        datastore: esx1-datastore
 
     templateOverrides:
       vms:
-        node00.ocp4.gmbros.local:
+        node00:
           interfaces:
           - name: ens224
             ipv4:
               address: 10.11.1.103
               prefix-length: 24
-        node01.ocp4.gmbros.local:
+        node01:
           interfaces:
           - name: ens224
             ipv4:
               address: 10.11.1.104
               prefix-length: 24
-        node02.ocp4.gmbros.local:
+        node02:
           interfaces:
           - name: ens224
             ipv4:
               address: 10.11.1.105
               prefix-length: 24
-        node03.ocp4.gmbros.local:
+        node03:
           interfaces:
           - name: ens224
             ipv4:
               address: 10.11.1.106
               prefix-length: 24
-        node04.ocp4.gmbros.local:
+        node04:
           additional_networks:
           - name: ens256
             network: Routed Network

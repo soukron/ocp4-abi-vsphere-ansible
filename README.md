@@ -73,6 +73,11 @@ Inventory files define:
 - vCenter datastore configuration
 - vCenter cluster selection (can be overridden per VM)
 
+VM resources can be defined at three levels, with higher priority overriding lower:
+1. `vms.defaultConfig`
+2. `vms.controlPlaneConfig` / `vms.computeConfig`
+3. `templateOverrides.vms.nodeXX`
+
 A few examples have been created in the See the  [`inventories/`](inventories/) directory.
 
 ## Network Configuration
@@ -98,7 +103,7 @@ Custom network configuration per node using `templateOverrides`:
 ```yaml
 templateOverrides:
   vms:
-    node00.cluster.local:
+    node00:
       cluster: zone2
       interfaces:
       - name: ens224
@@ -106,6 +111,8 @@ templateOverrides:
           address: 10.11.1.103
           prefix-length: 24
 ```
+
+You can also use the full FQDN for backward compatibility, but `nodeXX` is preferred.
 
 ### Bond Interfaces
 Support for network bonding with multiple ports:

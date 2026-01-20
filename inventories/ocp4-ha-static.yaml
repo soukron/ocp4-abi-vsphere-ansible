@@ -25,21 +25,15 @@ all:
     apiVIP: 10.11.0.101
 
     vms:
-      controlPlaneData:
+      defaultConfig:
         cpu: 4
+        disk:
+        - 100
+        networks:
+        - name: ens192
+          network: VM Routed Network
+        datastore: esx1-datastore
+      controlPlaneConfig:
         memory: 16384
-        disk:
-        - 100
-        networks:
-        - name: ens192
-          network: VM Routed Network
-        datastore: esx1-datastore
-      computeData:
-        cpu: 4
+      computeConfig:
         memory: 8192
-        disk:
-        - 100
-        networks:
-        - name: ens192
-          network: VM Routed Network
-        datastore: esx1-datastore

@@ -14,8 +14,14 @@
     node_networks: "{{ node_networks | default([]) + [ {
       'node_index': item.node_index,
       'hostname': 'node%02d.%s.%s' | format(item.node_index|int, name, baseDomain),
-      'networks': item.networks + (templateOverrides.vms[('node%02d.%s.%s' | format(item.node_index|int, name, baseDomain))].additional_networks | default([]))
+      'networks': item.networks + ((templateOverrides.vms[node_shortname].additional_networks | default([]))
+        if templateOverrides.vms is defined and node_shortname in templateOverrides.vms
+        else (templateOverrides.vms[fqdn].additional_networks | default([]))
+        if templateOverrides.vms is defined and fqdn in templateOverrides.vms else [])
     } ] }}"
+  vars:
+    node_shortname: "{{ 'node%02d' | format(item.node_index|int) }}"
+    fqdn: "{{ 'node%02d.%s.%s' | format(item.node_index|int, name, baseDomain) }}"
   loop: "{{ base_node_networks }}"
 
 - name: Expand bond interfaces into individual network interfaces
@@ -39,7 +45,12 @@
     node_index: "{{ item.0.node_index }}"
     interface: "{{ item.1 }}"
     hostname: "{{ 'node%02d.%s.%s' | format(node_index|int, name, baseDomain) }}"
-    node_overrides: "{{ templateOverrides.vms[hostname] if templateOverrides.vms is defined and hostname in templateOverrides.vms else {} }}"
+    node_shortname: "{{ 'node%02d' | format(node_index|int) }}"
+    node_overrides: >-
+      {{ templateOverrides.vms[node_shortname]
+         if templateOverrides.vms is defined and node_shortname in templateOverrides.vms
+         else (templateOverrides.vms[hostname]
+               if templateOverrides.vms is defined and hostname in templateOverrides.vms else {}) }}
     interface_overrides: "{{ node_overrides.interfaces | selectattr('name', 'equalto', interface.name) | list | first if node_overrides.interfaces is defined else {} }}"
     network_name: "{{ (interface_overrides.network | default(interface.network)) }}"
     mac_address: >-
