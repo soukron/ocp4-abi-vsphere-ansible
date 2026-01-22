@@ -1,5 +1,6 @@
 ---
 - ansible.builtin.import_playbook: create-abi-files.yaml
+- ansible.builtin.import_playbook: download-binaries.yaml
 - ansible.builtin.import_playbook: create-abi-image.yaml
 - ansible.builtin.import_playbook: create-vms.yaml
 - ansible.builtin.import_playbook: wait-for-install-complete.yaml

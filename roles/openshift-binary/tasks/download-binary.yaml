@@ -1,0 +1,56 @@
+---
+- name: Normalize binary entry
+  ansible.builtin.set_fact:
+    binary_name: "{{ (binary_item if binary_item is string else (binary_item.keys() | list | first)) }}"
+    binary_filename: "{{ (binary_item[binary_item.keys() | list | first].filename if binary_item is mapping else omit) }}"
+
+- name: Set download filename
+  ansible.builtin.set_fact:
+    tarball_base: "{{ binary_filename | default(binary_name) }}"
+
+- name: Check versioned binary in home bin
+  ansible.builtin.stat:
+    path: "{{ home_bin }}/{{ binary_name }}-{{ resolved_version }}"
+  register: binary_stat
+
+- name: Download tarball
+  ansible.builtin.get_url:
+    url: "https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/{{ requested_version }}/{{ tarball_base }}-linux.tar.gz"
+    dest: "/tmp/{{ tarball_base }}-{{ requested_version }}.tar.gz"
+    mode: "0644"
+  when: not binary_stat.stat.exists
+
+- name: Create temporary extract directory
+  ansible.builtin.file:
+    path: "/tmp/{{ tarball_base }}-{{ requested_version }}"
+    state: directory
+    mode: "0755"
+  when: not binary_stat.stat.exists
+
+- name: Extract binary only
+  ansible.builtin.unarchive:
+    src: "/tmp/{{ tarball_base }}-{{ requested_version }}.tar.gz"
+    dest: "/tmp/{{ tarball_base }}-{{ requested_version }}"
+    remote_src: true
+    extra_opts:
+      - "--wildcards"
+      - "{{ binary_name }}"
+  when: not binary_stat.stat.exists
+
+- name: Move binary into home bin
+  ansible.builtin.command: "mv /tmp/{{ tarball_base }}-{{ requested_version }}/{{ binary_name }} {{ home_bin }}/{{ binary_name }}-{{ resolved_version }}"
+  when: not binary_stat.stat.exists
+  args:
+    creates: "{{ home_bin }}/{{ binary_name }}-{{ resolved_version }}"
+
+- name: Remove temporary tarball
+  ansible.builtin.file:
+    path: "/tmp/{{ tarball_base }}-{{ requested_version }}.tar.gz"
+    state: absent
+  when: not binary_stat.stat.exists
+
+- name: Remove temporary extract directory
+  ansible.builtin.file:
+    path: "/tmp/{{ tarball_base }}-{{ requested_version }}"
+    state: absent
+  when: not binary_stat.stat.exists

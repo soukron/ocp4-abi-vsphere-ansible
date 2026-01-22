@@ -1,0 +1,7 @@
+---
+- name: Ensure OpenShift installer for requested version
+  hosts: localhost
+  gather_facts: false
+  roles:
+  - role: openshift-binary
+    when: version is defined

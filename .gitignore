@@ -1,3 +1,4 @@
+.claude/
 clusters/
 inventories/*
 !inventories/extra_manifests

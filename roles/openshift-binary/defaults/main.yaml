@@ -1,0 +1,5 @@
+---
+binaries:
+  - openshift-install
+  - oc:
+      filename: openshift-client
