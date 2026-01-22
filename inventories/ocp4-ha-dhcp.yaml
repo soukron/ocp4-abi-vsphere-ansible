@@ -1,9 +1,5 @@
 all:
   vars:
-    # optionally set a different clusterBaseDir for clusters
-    # defaults to "clusters/" in the repository directory
-    clusterBaseDir: ~/.local/ocp4/clusters
-
     name: ocp4
     baseDomain: gmbros.local
 

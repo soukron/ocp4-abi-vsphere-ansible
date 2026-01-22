@@ -3,3 +3,4 @@ binaries:
   - openshift-install
   - oc:
       filename: openshift-client
+binaryNaming: simple

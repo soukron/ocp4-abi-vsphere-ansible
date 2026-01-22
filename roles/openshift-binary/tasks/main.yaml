@@ -1,7 +1,13 @@
 ---
-- name: Set home bin path
+- name: Normalize binary destination input
   ansible.builtin.set_fact:
-    home_bin: "{{ lookup('env', 'HOME') }}/bin"
+    binary_dir: "{{ binaryDir | default('') | string }}"
+
+- name: Set binary destination path
+  ansible.builtin.set_fact:
+    home_bin: >-
+      {{ (binary_dir | length | int > 0)
+         | ternary(binary_dir, lookup('env', 'HOME') + '/bin') }}
 
 - name: Ensure $HOME/bin exists
   ansible.builtin.file:
@@ -44,4 +50,5 @@
 
 - name: Set openshift-install path
   ansible.builtin.set_fact:
-    openshift_install_bin: "{{ home_bin + '/openshift-install-' + resolved_version }}"
+    openshift_install_bin: >-
+      {{ home_bin + '/openshift-install' + (('-' + resolved_version) if binaryNaming == 'semver' else '') }}

@@ -3,6 +3,12 @@
   hosts: localhost
   gather_facts: false
 
+  pre_tasks:
+  - name: Ensure OpenShift binaries are available
+    ansible.builtin.include_role:
+      name: openshift-binary
+    when: version is defined
+
   tasks:
   - name: Store clusterDir in a fact
     ansible.builtin.set_fact: clusterDir="{{ clusterBaseDir|default('../clusters') }}/{{ name }}.{{ baseDomain }}"
