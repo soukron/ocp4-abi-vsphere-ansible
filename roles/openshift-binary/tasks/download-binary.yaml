@@ -8,31 +8,24 @@
   ansible.builtin.set_fact:
     tarball_base: "{{ binary_filename | default(binary_name) }}"
 
-- name: Check versioned binary in home bin
+- name: Check binary in binary directory
   ansible.builtin.stat:
-    path: "{{ home_bin }}/{{ binary_name }}-{{ resolved_version }}"
-  register: binary_stat_semver
-  when: binaryNaming == 'semver'
-
-- name: Check simple binary in home bin
-  ansible.builtin.stat:
-    path: "{{ home_bin }}/{{ binary_name }}"
-  register: binary_stat_simple
-  when: binaryNaming == 'simple'
+    path: "{{ binary_dir }}/{{ binary_name }}{{ '-'+resolved_version if binaryNaming == 'semver' else '' }}"
+  register: binary_stat
 
 - name: Read simple binary version
   ansible.builtin.command: >-
-    {{ home_bin }}/{{ binary_name }} version
+    {{ binary_dir }}/{{ binary_name }} version
   register: simple_version_cmd
   changed_when: false
   failed_when: false
-  when: binaryNaming == 'simple' and binary_stat_simple.stat.exists
+  when: binaryNaming == 'simple' and binary_stat.stat.exists
 
 - name: Build match version for simple binaries
   ansible.builtin.set_fact:
     match_version: >-
       {{ (resolved_version if (requested_version is match('^(latest-|stable-|release-)')) else requested_version) }}
-  when: binaryNaming == 'simple' and binary_stat_simple.stat.exists
+  when: binaryNaming == 'simple' and binary_stat.stat.exists
 
 - name: Decide simple binary version match
   ansible.builtin.set_fact:
@@ -40,13 +33,13 @@
       {{ (simple_version_cmd.stdout_lines | default([])
           | select('search', match_version | regex_escape)
           | list | length > 0) | ternary(match_version, '') }}
-  when: binaryNaming == 'simple' and binary_stat_simple.stat.exists
+  when: binaryNaming == 'simple' and binary_stat.stat.exists
 
 - name: Decide whether to download
   ansible.builtin.set_fact:
     should_download: >-
-      {{ (binaryNaming == 'semver' and not binary_stat_semver.stat.exists)
-         or (binaryNaming == 'simple' and (not binary_stat_simple.stat.exists or simple_version != resolved_version)) }}
+      {{ (binaryNaming == 'semver' and not binary_stat.stat.exists)
+         or (binaryNaming == 'simple' and (not binary_stat.stat.exists or simple_version != resolved_version)) }}
 
 - name: Download tarball
   ansible.builtin.get_url:
@@ -72,20 +65,17 @@
       - "{{ binary_name }}"
   when: should_download
 
-- name: Move binary into home bin
+- name: Move binary into binary directory
   ansible.builtin.command: >-
     mv -f /tmp/{{ tarball_base }}-{{ requested_version }}/{{ binary_name }}
-    {{ home_bin }}/{{ binary_name }}{{ '-' + resolved_version if binaryNaming == 'semver' else '' }}
+    {{ binary_dir }}/{{ binary_name }}{{ '-' + resolved_version if binaryNaming == 'semver' else '' }}
   when: should_download
 
-- name: Remove temporary tarball
+- name: Remove temporary tarball and directory
   ansible.builtin.file:
-    path: "/tmp/{{ tarball_base }}-{{ requested_version }}.tar.gz"
+    path: "{{ item }}"
     state: absent
-  when: should_download
-
-- name: Remove temporary extract directory
-  ansible.builtin.file:
-    path: "/tmp/{{ tarball_base }}-{{ requested_version }}"
-    state: absent
+  with_items:
+  - "/tmp/{{ tarball_base }}-{{ requested_version }}.tar.gz"
+  - "/tmp/{{ tarball_base }}-{{ requested_version }}"
   when: should_download

@@ -1,45 +1,38 @@
 ---
-- name: Normalize binary destination input
+- name: Compute binary directory
   ansible.builtin.set_fact:
-    binary_dir: "{{ binaryDir | default('') | string }}"
+    binary_dir: "{{ binariesDir | default(lookup('env', 'HOME') + '/bin') }}"
 
-- name: Set binary destination path
-  ansible.builtin.set_fact:
-    home_bin: >-
-      {{ (binary_dir | length | int > 0)
-         | ternary(binary_dir, lookup('env', 'HOME') + '/bin') }}
-
-- name: Ensure $HOME/bin exists
+- name: Ensure binary directory exists
   ansible.builtin.file:
-    path: "{{ home_bin }}"
+    path: "{{ binary_dir }}"
     state: directory
     mode: "0755"
 
-- name: Set requested version
+- name: Set requested version fact
   ansible.builtin.set_fact:
     requested_version: "{{ version }}"
 
-- name: Use requested version when already semver
+- name: Set resolved version from requested version fact when already semver 
   ansible.builtin.set_fact:
     resolved_version: "{{ requested_version }}"
   when: requested_version is match('^[0-9]+\\.[0-9]+\\.[0-9]+$')
 
-- name: Download release metadata for alias versions
-  ansible.builtin.get_url:
-    url: "https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/{{ requested_version }}/release.txt"
-    dest: "/tmp/openshift-release-{{ requested_version }}.txt"
-    mode: "0644"
-  when: resolved_version is not defined
+- block:
+  - name: Download release metadata for alias versions
+    ansible.builtin.get_url:
+      url: "https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/{{ requested_version }}/release.txt"
+      dest: "/tmp/openshift-release-{{ requested_version }}.txt"
+      mode: "0644"
 
-- name: Extract resolved version from release metadata
-  ansible.builtin.command: "awk -F': *' '/^Name:/ {print $2; exit}' /tmp/openshift-release-{{ requested_version }}.txt"
-  register: release_name
-  changed_when: false
-  when: resolved_version is not defined
+  - name: Extract resolved version from release metadata
+    ansible.builtin.command: "awk -F': *' '/^Name:/ {print $2; exit}' /tmp/openshift-release-{{ requested_version }}.txt"
+    register: release_name
+    changed_when: false
 
-- name: Set resolved version from metadata
-  ansible.builtin.set_fact:
-    resolved_version: "{{ release_name.stdout | trim }}"
+  - name: Set resolved version from metadata
+    ansible.builtin.set_fact:
+      resolved_version: "{{ release_name.stdout | trim }}"
   when: resolved_version is not defined
 
 - name: Download and install binaries
@@ -47,8 +40,3 @@
   loop: "{{ binaries }}"
   loop_control:
     loop_var: binary_item
-
-- name: Set openshift-install path
-  ansible.builtin.set_fact:
-    openshift_install_bin: >-
-      {{ home_bin + '/openshift-install' + (('-' + resolved_version) if binaryNaming == 'semver' else '') }}

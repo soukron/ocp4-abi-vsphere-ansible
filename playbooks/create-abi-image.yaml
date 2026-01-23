@@ -27,6 +27,8 @@
 
   - name: Run openshift-install to generate the ISO file
     ansible.builtin.shell: "openshift-install --dir {{ clusterDir }} agent create image"
+    environment:
+      OCP4_VERSION: "{{ resolved_version | default(version | default('')) | string }}"
 
   - name: Delete previous ISO image to datastore
     community.vmware.vsphere_file:

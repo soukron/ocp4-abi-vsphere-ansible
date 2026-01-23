@@ -15,6 +15,10 @@
 
   - name: Waiting for bootstrap to complete
     ansible.builtin.shell: "openshift-install --dir {{ clusterDir }} agent wait-for bootstrap-complete"
+    environment:
+      OCP4_VERSION: "{{ resolved_version | default(version | default('')) | string }}"
 
   - name: Waiting for installation to complete
     ansible.builtin.shell: "openshift-install --dir {{ clusterDir }} agent wait-for install-complete"
+    environment:
+      OCP4_VERSION: "{{ resolved_version | default(version | default('')) | string }}"
