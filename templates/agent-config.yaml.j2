@@ -26,7 +26,7 @@ hosts:
 {% endfor %}
 {% endif %}
   rootDeviceHints:
-    deviceName: /dev/sda
+    deviceName: {{ vm.root_device | default(controlPlaneConfig.root_device | default(defaultConfig.root_device | default('/dev/disk/by-path/pci-0000:03:00.0-scsi-0:0:0:0'))) }}
   networkConfig:
 {% if network_config %}
 {% if network_config.interfaces %}
